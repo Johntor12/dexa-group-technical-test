@@ -1,0 +1,42 @@
+{
+  "collection": "@nestjs/schematics",
+  "monorepo": true,
+  "root": "apps/api-gateway",
+  "sourceRoot": "apps/api-gateway/src",
+  "compilerOptions": {
+    "deleteOutDir": false,
+    "builder": "tsc"
+  },
+  "projects": {
+    "gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-gateway/tsconfig.app.json",
+        "builder": "tsc"
+      }
+    },
+    "employee": {
+      "type": "application",
+      "root": "apps/employee-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/employee-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/employee-service/tsconfig.app.json",
+        "builder": "tsc"
+      }
+    },
+    "attendance": {
+      "type": "application",
+      "root": "apps/attendance-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/attendance-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/attendance-service/tsconfig.app.json",
+        "builder": "tsc"
+      }
+    }
+  }
+}

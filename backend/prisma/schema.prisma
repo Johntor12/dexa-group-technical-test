@@ -1,0 +1,203 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "mysql"
+}
+
+enum Role {
+    EMPLOYEE
+    HRD
+}
+
+enum DepartmentCode {
+    SALES
+    MARKETING
+    PRODUCTION
+    FINANCE
+    HR
+    IT
+    R_AND_D
+    LOGISTIC
+    ADMINISTRATION_AND_SECRETARY
+    DESIGN_DEPARTMENT
+}
+
+enum AttendanceSource {
+    DIRECT
+    CORRECTION
+}
+
+enum CorrectionStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    CANCELLED
+}
+
+model User {
+    id              String           @id @default(uuid()) @db.Char(36)
+    email           String           @unique @db.VarChar(191)
+    passwordHash    String           @db.VarChar(255)
+    role            Role             @default(EMPLOYEE)
+    active          Boolean          @default(true)
+    employee        Employee?
+    sessions        Session[]
+    activationToken ActivationToken?
+    reviewGrants    CorrectionReviewGrant[]
+    reviewedCorrections AttendanceCorrectionRequest[] @relation("CorrectionReviewer")
+    createdAt       DateTime         @default(now())
+}
+
+model ActivationToken {
+    id        String    @id @default(uuid()) @db.Char(36)
+    userId    String    @unique @db.Char(36)
+    user      User      @relation(fields: [userId], references: [id])
+    tokenHash String    @unique @db.Char(64)
+    expiresAt DateTime
+    usedAt    DateTime?
+    createdAt DateTime  @default(now())
+}
+
+model Session {
+    id        String   @id @db.Char(36)
+    userId    String   @db.Char(36)
+    user      User     @relation(fields: [userId], references: [id])
+    expiresAt DateTime
+    revoked   Boolean  @default(false)
+
+    @@index([userId])
+}
+
+model Employee {
+    id             String         @id @default(uuid()) @db.Char(36)
+    userId         String         @unique @db.Char(36)
+    user           User           @relation(fields: [userId], references: [id])
+    employeeNumber String         @unique @db.VarChar(50)
+    fullName       String         @db.VarChar(150)
+    department     DepartmentCode
+    position       String         @db.VarChar(100)
+    active         Boolean        @default(true)
+    createdAt      DateTime       @default(now())
+    updatedAt      DateTime       @updatedAt
+    attendances    Attendance[]
+    correctionRequests AttendanceCorrectionRequest[]
+    eligibleDays CorrectionEligibleDay[]
+}
+
+model Attendance {
+    id               String         @id @default(uuid()) @db.Char(36)
+    employeeId       String         @db.Char(36)
+    employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+    employeeName     String         @db.VarChar(150)
+    employeeNumber   String         @db.VarChar(50)
+    department       DepartmentCode
+    submittedAt      DateTime       @db.DateTime(3)
+    workDate         String         @db.Char(10)
+    latitude         Float?
+    longitude        Float?
+    locationAccuracy Float?
+    wfhReason        String?        @db.VarChar(500)
+    evidence         Evidence?
+    idempotency      Idempotency?
+    source           AttendanceSource @default(DIRECT)
+    correctionRequestId String? @unique @db.Char(36)
+    correctionRequest AttendanceCorrectionRequest? @relation(fields: [correctionRequestId], references: [id], onDelete: Restrict)
+
+    @@unique([employeeId, workDate])
+    @@index([workDate, department])
+}
+
+model CorrectionReviewGrant {
+    id String @id @default(uuid()) @db.Char(36)
+    userId String @db.Char(36)
+    user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+    department DepartmentCode
+    permission String @default("ATTENDANCE_CORRECTION_REVIEW") @db.VarChar(64)
+    createdAt DateTime @default(now())
+
+    @@unique([userId, department, permission])
+}
+
+model CorrectionEligibleDay {
+    id String @id @default(uuid()) @db.Char(36)
+    employeeId String @db.Char(36)
+    employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+    workDate String @db.Char(10)
+    note String? @db.VarChar(255)
+    createdAt DateTime @default(now())
+
+    @@unique([employeeId, workDate])
+}
+
+model AttendanceCorrectionRequest {
+    id String @id @default(uuid()) @db.Char(36)
+    employeeId String @db.Char(36)
+    employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+    workDate String @db.Char(10)
+    requestType String @default("MISSED_ATTENDANCE") @db.VarChar(32)
+    reason String @db.Text
+    status CorrectionStatus @default(PENDING)
+    requestedAt DateTime @default(now()) @db.DateTime(3)
+    reviewedAt DateTime? @db.DateTime(3)
+    reviewedByUserId String? @db.Char(36)
+    reviewer User? @relation("CorrectionReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+    reviewNote String? @db.Text
+    version Int @default(0)
+    idempotencyKey String @db.VarChar(100)
+    pendingKey String? @unique @db.VarChar(64)
+    priorRejectedRequestId String? @db.Char(36)
+    priorRejectedRequest AttendanceCorrectionRequest? @relation("CorrectionRetry", fields: [priorRejectedRequestId], references: [id], onDelete: Restrict)
+    retriedBy AttendanceCorrectionRequest[] @relation("CorrectionRetry")
+    evidence AttendanceCorrectionEvidence[]
+    attendance Attendance?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([employeeId, idempotencyKey])
+    @@index([employeeId, workDate, status])
+    @@index([status, requestedAt])
+}
+
+model AttendanceCorrectionEvidence {
+    id String @id @default(uuid()) @db.Char(36)
+    correctionId String @db.Char(36)
+    correction AttendanceCorrectionRequest @relation(fields: [correctionId], references: [id], onDelete: Restrict)
+    storageKey String @unique @db.Char(36)
+    mimeType String @db.VarChar(50)
+    size Int
+    sha256 String @db.Char(64)
+    uploadedAt DateTime @default(now()) @db.DateTime(3)
+}
+
+model Evidence {
+    id           String     @id @default(uuid()) @db.Char(36)
+    attendanceId String     @unique @db.Char(36)
+    attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+    storageKey   String     @unique @db.Char(36)
+    mimeType     String     @db.VarChar(50)
+    size         Int
+    sha256       String     @db.Char(64)
+}
+
+model Idempotency {
+    id           String     @id @default(uuid()) @db.Char(36)
+    employeeId   String     @db.Char(36)
+    key          String     @db.VarChar(100)
+    fingerprint  String     @db.Char(64)
+    attendanceId String     @unique @db.Char(36)
+    attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+
+    @@unique([employeeId, key])
+}
+
+model AuditEvent {
+    id         String   @id @default(uuid()) @db.Char(36)
+    actorId    String   @db.Char(36)
+    employeeId String   @db.Char(36)
+    action     String   @db.VarChar(40)
+    changes    Json
+    createdAt  DateTime @default(now())
+}

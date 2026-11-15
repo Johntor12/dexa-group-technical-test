@@ -1,0 +1,50 @@
+export type Role = 'EMPLOYEE' | 'HRD';
+import type { DepartmentCode } from './department.js';
+export interface Principal {
+  userId: string;
+  role: Role;
+  sessionId: string;
+  reviewDepartments?: DepartmentCode[];
+  employee?: {
+    id: string;
+    fullName: string;
+    employeeNumber: string;
+    department: DepartmentCode;
+  };
+}
+export interface Envelope {
+  secret: string;
+  requestId: string;
+  token?: string;
+  data: unknown;
+}
+export const patterns = {
+  login: 'auth.login',
+  identity: 'auth.identity',
+  logout: 'auth.logout',
+  activate: 'auth.activate',
+  employees: 'employees.list',
+  create: 'employees.create',
+  detail: 'employees.detail',
+  update: 'employees.update',
+  deactivate: 'employees.deactivate',
+  departments: 'employees.departments',
+  activationLink: 'employees.activation-link',
+  submit: 'attendance.submit',
+  list: 'attendance.list',
+  mine: 'attendance.mine',
+  today: 'attendance.today',
+  attendance: 'attendance.detail',
+  evidence: 'attendance.evidence',
+  sweep: 'evidence.sweep',
+  health: 'health',
+  correctionEligible: 'correction.eligible',
+  correctionCreate: 'correction.create',
+  correctionMine: 'correction.findMine',
+  correctionDetail: 'correction.findOne',
+  correctionPending: 'correction.listPending',
+  correctionApprove: 'correction.approve',
+  correctionReject: 'correction.reject',
+  correctionCancel: 'correction.cancel',
+  correctionEvidence: 'correction.evidence',
+} as const;

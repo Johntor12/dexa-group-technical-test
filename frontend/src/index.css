@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dexa-red: #e30013;
+  --color-dexa-ink: #17242b;
+  --color-dexa-muted: #4e606b;
+  --color-dexa-border: #e6ddde;
+  --color-dexa-bg: #faf8f8;
+  --font-sans: Inter, Arial, sans-serif;
+}
+
+@layer base {
+  body { @apply m-0 bg-dexa-bg font-sans text-dexa-ink; }
+  button { @apply cursor-pointer rounded-[0.56vw] border border-dexa-border bg-white px-[1.1vw] py-[0.7vw] font-semibold text-dexa-muted hover:bg-dexa-bg disabled:cursor-not-allowed disabled:opacity-50; }
+  input, select { @apply w-full rounded-[0.56vw] border border-dexa-border bg-white px-[0.97vw] py-[0.83vw] text-dexa-ink; }
+  label { @apply flex flex-col gap-[0.5vw] text-[clamp(0.8rem,0.97vw,1rem)] font-medium; }
+  h1 { @apply text-[clamp(1.8rem,2.6vw,2.5rem)] font-bold; }
+  h2 { @apply text-[clamp(1.25rem,1.8vw,1.8rem)] font-bold; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-dexa-red; }
+}
+
+@layer components {
+  .primary { @apply border-dexa-red bg-dexa-red text-white hover:bg-[#b80010]; }
+  .muted { @apply text-dexa-muted; }
+  .small { @apply text-[clamp(0.7rem,0.9vw,0.9rem)]; }
+  .eyebrow { @apply text-[clamp(0.65rem,0.8vw,0.8rem)] font-semibold tracking-wider text-dexa-red; }
+  .login-page { @apply grid min-h-screen grid-cols-1 bg-white lg:grid-cols-[40vw_60vw]; }
+  .login-story { @apply relative hidden min-h-screen flex-col justify-between bg-dexa-red p-[3.33vw] text-white lg:flex; }
+  .login-brand { @apply text-[clamp(1.2rem,1.95vw,2rem)]; }
+  .login-story-content { @apply my-auto; }
+  .login-story .eyebrow { @apply text-white; }
+  .login-story h1 { @apply mt-[2vw] text-[clamp(2.5rem,3.6vw,4rem)] leading-[1.4] tracking-tight; }
+  .login-story-content p { @apply mt-[2vw] text-[clamp(0.9rem,1.25vw,1.3rem)] leading-[1.5]; }
+  .story-accent { @apply mt-[3vw] block h-[0.28vw] w-[4.44vw] rounded-full bg-[#ed8f90]; }
+  .story-steps { @apply text-[clamp(0.75rem,0.97vw,1rem)]!; }
+  .story-note { @apply text-[clamp(0.72rem,0.9vw,0.9rem)]; }
+  .login-panel { @apply mx-auto flex w-full max-w-[30.6vw] flex-col justify-center px-[2vw] py-[4vw] max-lg:max-w-[90vw] max-lg:px-[5vw]; }
+  .login-panel h2 { @apply mt-[1.5vw] text-[clamp(1.65rem,2.1vw,2.4rem)]; }
+  .login-panel form { @apply mt-[3vw] grid gap-[2vw]; }
+  .login-panel .primary { @apply h-[3.1vw] min-h-11 w-full; }
+  .login-panel .small { @apply mt-[1.4vw]; }
+  .mobile-brand { @apply mb-[10vw] text-[clamp(1.35rem,5vw,2rem)] font-bold text-dexa-red lg:hidden; }
+  .mobile-brand span { @apply mt-[1vw] block text-[clamp(0.75rem,3vw,1rem)] font-normal text-dexa-muted; }
+  .password-field { @apply relative; }
+  .password-field input { @apply pr-[3vw]; }
+  .password-field button { @apply absolute right-[0.6vw] top-1/2 -translate-y-1/2 border-0 p-[0.3vw]; }
+  .password-field img { @apply h-[1.4vw] min-h-5 w-[1.4vw] min-w-5; }
+  .workspace { @apply flex min-h-screen bg-dexa-bg max-md:block; }
+  .sidebar { @apply sticky top-0 flex h-screen w-[16.67vw] shrink-0 flex-col border-r border-dexa-border bg-white px-[1.1vw] py-[2vw] max-md:static max-md:h-auto max-md:w-full max-md:border-b max-md:p-[4vw]; }
+  .brand { @apply flex items-center gap-[0.7vw] text-[clamp(1.1rem,1.6vw,1.6rem)] font-bold text-dexa-red; }
+  .brand-mark { @apply hidden; }
+  .nav-label { @apply mt-[3vw] mb-[1vw] text-[clamp(0.6rem,0.75vw,0.75rem)] tracking-widest text-dexa-muted max-md:hidden; }
+  .sidebar nav { @apply grid gap-[0.5vw] max-md:flex; }
+  .sidebar nav button { @apply border-0 text-left; }
+  .sidebar nav [aria-current] { @apply bg-[#fff0f0] text-[#a9000e]; }
+  .sidebar-bottom { @apply mt-auto border-t border-dexa-border pt-[1vw] text-[clamp(0.7rem,0.9vw,0.9rem)] max-md:mt-[1vw]; }
+  .role-badge { @apply font-bold text-dexa-red; }
+  .content { @apply mx-auto w-full max-w-[83.33vw] px-[2.22vw] py-[3vw] max-md:max-w-none max-md:px-[4vw]; }
+  .content header { @apply mb-[2vw] flex items-center justify-between gap-[2vw] max-sm:flex-col max-sm:items-start; }
+  .card { @apply mb-[1.7vw] rounded-[0.7vw] border border-dexa-border bg-white p-[1.8vw] max-md:rounded-xl max-md:p-[4vw]; }
+  .check-in { @apply grid grid-cols-2 gap-[2vw] border-t-[0.28vw] border-t-dexa-red max-lg:grid-cols-1; }
+  .check-in form { @apply grid gap-[0.8vw]; }
+  .status { @apply inline-flex rounded-full bg-[#fff0f0] px-[0.8vw] py-[0.35vw] text-[clamp(0.7rem,0.8vw,0.85rem)] font-semibold text-[#a9000e]; }
+  .status.active { @apply bg-[#eaf7ee] text-[#21653a]; }
+  .section-title { @apply mb-[1.4vw] flex items-center justify-between gap-[1vw]; }
+  .filters { @apply mb-[1.7vw] flex flex-wrap gap-[1vw]; }
+  .filters label { @apply min-w-[10vw] flex-1 max-sm:min-w-[40vw]; }
+  .table-scroll { @apply overflow-x-auto; }
+  table { @apply w-full border-collapse text-left text-[clamp(0.75rem,0.97vw,1rem)]; }
+  th { @apply bg-dexa-bg px-[1vw] py-[0.8vw] text-[clamp(0.65rem,0.75vw,0.8rem)] font-semibold uppercase tracking-wide text-dexa-muted; }
+  td { @apply border-b border-dexa-border px-[1vw] py-[1.2vw]; }
+  .cell-secondary { @apply mt-[0.3vw] block text-[clamp(0.7rem,0.8vw,0.85rem)] text-dexa-muted; }
+  .row-actions { @apply flex gap-[0.5vw]; }
+  .empty-state { @apply py-[4vw] text-center text-dexa-muted; }
+  .pagination { @apply mt-[1.6vw] flex items-center justify-between gap-[1vw] text-[clamp(0.7rem,0.8vw,0.85rem)] max-sm:flex-col max-sm:items-start; }
+  .pagination div { @apply flex gap-[0.5vw]; }
+  .alert { @apply my-[1vw] rounded-[0.6vw] border px-[1vw] py-[0.9vw] text-[clamp(0.75rem,0.9vw,0.9rem)]; }
+  .error { @apply border-[#f3c5c0] bg-[#fff1ef] text-[#9a2323]; }
+  .success { @apply border-[#bbdfc6] bg-[#e9f6ed] text-[#256139]; }
+  .employee-form { @apply grid grid-cols-2 gap-[1vw] max-sm:grid-cols-1; }
+  .form-actions { @apply col-span-full flex gap-[1vw]; }
+  .footer-note { @apply mt-[2vw] text-center; }
+  dialog { @apply m-auto max-h-[90vh] w-[60vw] max-w-[90vw] rounded-xl border border-dexa-border bg-white p-[2vw] max-md:w-[90vw]; }
+  dialog::backdrop { @apply bg-[#17242bb3]; }
+  dialog img { @apply mx-auto max-h-[70vh] max-w-full object-contain; }
+}
