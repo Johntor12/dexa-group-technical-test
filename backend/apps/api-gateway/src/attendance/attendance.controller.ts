@@ -24,13 +24,56 @@ import {
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { open } from 'node:fs/promises';
+import exifr from 'exifr';
 import type { Response } from 'express';
 import { AttendanceMetadataDto, ListDto } from '../../../../libs/contracts/src/dto.js';
 import { RpcClients } from '../../../../libs/common/src/rpc.js';
-import { PhotoStorage } from '../../../../libs/common/src/storage.js';
+import { imageType, PhotoStorage } from '../../../../libs/common/src/storage.js';
 import { DomainError, fail } from '../../../../libs/common/src/errors.js';
+import { patterns as P } from '../../../../libs/contracts/src/contracts.js';
 import { AuthGuard, Roles } from '../common/security.js';
 import type { ApiRequest } from '../common/security.js';
+
+async function readPhotoCapture(bytes: Buffer) {
+  // Parse the complete metadata directory: some camera apps save the capture
+  // timestamp as CreateDate or XMP rather than the EXIF DateTimeOriginal tag.
+  const tags = await exifr.parse(bytes, { reviveValues: false }).catch(() => undefined);
+  const candidates = [
+    tags?.DateTimeOriginal,
+    tags?.CreateDate,
+    tags?.DateTimeDigitized,
+    tags?.ModifyDate,
+    tags?.DateTime,
+    tags?.DateCreated,
+    tags?.DateTimeCreated,
+  ];
+  const normalize = (value: unknown): string | null => {
+    if (value instanceof Date && Number.isFinite(value.getTime()))
+      return `${value.getUTCFullYear()}:${String(value.getUTCMonth() + 1).padStart(2, '0')}:${String(value.getUTCDate()).padStart(2, '0')} ${String(value.getUTCHours()).padStart(2, '0')}:${String(value.getUTCMinutes()).padStart(2, '0')}:${String(value.getUTCSeconds()).padStart(2, '0')}`;
+    if (typeof value !== 'string') return null;
+    const input = value.trim();
+    const iso = input.match(/(?:^|\D)(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?(?:$|\D)/);
+    if (iso) return `${iso[1]}:${iso[2]}:${iso[3]} ${iso[4]}:${iso[5]}:${iso[6]}`;
+    const exif = input.match(/(?:^|\D)(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:$|\D)/);
+    return exif ? `${exif[1]}:${exif[2]}:${exif[3]} ${exif[4]}:${exif[5]}:${exif[6]}` : null;
+  };
+  // Include free-text metadata fields used by some camera apps. This still
+  // reads stored metadata, not text burned into the visible pixels.
+  candidates.push(...Object.values(tags ?? {}).filter((value) => typeof value === 'string'));
+  const raw = candidates.map(normalize).find((value) => value !== null) ?? null;
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second] = match;
+  const check = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)));
+  if (check.getUTCFullYear() !== Number(year) || check.getUTCMonth() !== Number(month) - 1 || check.getUTCDate() !== Number(day) || check.getUTCHours() !== Number(hour) || check.getUTCMinutes() !== Number(minute) || check.getUTCSeconds() !== Number(second))
+    return null;
+  const capturedAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  const rawOffset = tags?.OffsetTimeOriginal ?? tags?.OffsetTimeDigitized;
+  const offset = typeof rawOffset === 'string' && /^[+-](?:0\d|1\d|2[0-3]):[0-5]\d$/.test(rawOffset) ? rawOffset : null;
+  return { capturedAt, offset };
+}
+
 @ApiTags('Attendance')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -40,19 +83,33 @@ export class AttendanceController {
     private readonly rpc: RpcClients,
     private readonly storage: PhotoStorage,
   ) {}
+  @Post('photo-metadata')
+  @Roles('EMPLOYEE')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', required: ['photo'], properties: { photo: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('photo', { storage: memoryStorage(), limits: { fileSize: 5242880, files: 1, fields: 0, parts: 1 } }))
+  async photoMetadata(@UploadedFile() photo: Express.Multer.File) {
+    if (!photo) fail(400, 'PHOTO_REQUIRED', 'Please select a photo.');
+    if (!photo.buffer.length || imageType(photo.buffer) !== photo.mimetype)
+      fail(422, 'INVALID_PHOTO', 'Photo content does not match its MIME type.');
+    return (await readPhotoCapture(photo.buffer)) ?? { capturedAt: null, offset: null };
+  }
+
   @Post()
   @Roles('EMPLOYEE')
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['photo', 'latitude', 'longitude', 'locationAccuracy'],
+      required: ['photo', 'latitude', 'longitude', 'locationAccuracy', 'taskDescription'],
       properties: {
         photo: { type: 'string', format: 'binary' },
         latitude: { type: 'number', minimum: -90, maximum: 90 },
         longitude: { type: 'number', minimum: -180, maximum: 180 },
         locationAccuracy: { type: 'number', minimum: 0 },
+        taskDescription: { type: 'string', minLength: 1, maxLength: 500 },
         wfhReason: { type: 'string', maxLength: 500 },
+        checkInPhotoCapturedAt: { type: 'string', description: 'Waktu dari metadata foto atau pilihan manual employee.' },
       },
     },
   })
@@ -68,7 +125,9 @@ export class AttendanceController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
-      limits: { fileSize: 5242880, files: 1, fields: 4, parts: 5 },
+      // Maximum payload: photo + coordinates (3) + task + optional reason +
+      // optional manually selected photo capture timestamp.
+      limits: { fileSize: 5242880, files: 1, fields: 6, parts: 7 },
     }),
   )
   async submit(
@@ -78,6 +137,19 @@ export class AttendanceController {
     @Res({ passthrough: true }) res: Response,
   ) {
     if (!photo) fail(400, 'PHOTO_REQUIRED', 'Please select a photo.');
+    const capture = await readPhotoCapture(photo.buffer);
+    const suppliedCapture = body.checkInPhotoCapturedAt?.trim();
+    const manualMatch = suppliedCapture?.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    let manualCapture: string | null = null;
+    if (manualMatch) {
+      const [, year, month, day, hour, minute, rawSecond = '00'] = manualMatch;
+      const check = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(rawSecond)));
+      if (check.getUTCFullYear() === Number(year) && check.getUTCMonth() === Number(month) - 1 && check.getUTCDate() === Number(day) && check.getUTCHours() === Number(hour) && check.getUTCMinutes() === Number(minute) && check.getUTCSeconds() === Number(rawSecond))
+        manualCapture = `${year}-${month}-${day}T${hour}:${minute}:${rawSecond}`;
+    }
+    const capturedAt = capture?.capturedAt ?? manualCapture;
+    if (!capturedAt)
+      fail(400, 'PHOTO_TIMESTAMP_REQUIRED', 'Pilih tanggal dan waktu pada foto.');
     const key = r.headers['idempotency-key'];
     if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(key))
       fail(
@@ -93,7 +165,7 @@ export class AttendanceController {
       }>(
         'attendance',
         'attendance.submit',
-        { ...staged, ...body, key },
+        { ...staged, ...body, checkInPhotoCapturedAt: capturedAt, checkInPhotoOffset: capture?.offset ?? undefined, key },
         r.token,
         r.requestId,
       );
@@ -115,6 +187,9 @@ export class AttendanceController {
       r.token,
       r.requestId,
     );
+  }
+  @Post('me/check-out') @Roles('EMPLOYEE') checkOut(@Req() r: ApiRequest) {
+    return this.rpc.call('attendance', P.checkOut, {}, r.token, r.requestId);
   }
   @Get('me') @Roles('EMPLOYEE') mine(
     @Query() q: ListDto,

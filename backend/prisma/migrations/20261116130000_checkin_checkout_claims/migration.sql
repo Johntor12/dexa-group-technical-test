@@ -1,0 +1,38 @@
+ALTER TABLE `Attendance`
+    ADD COLUMN `checkInPhotoCapturedAt` VARCHAR(19) NULL,
+    ADD COLUMN `checkInPhotoOffset` VARCHAR(6) NULL,
+    ADD COLUMN `checkOutDueAt` DATETIME(3) NULL,
+    ADD COLUMN `checkOutAt` DATETIME(3) NULL,
+    ADD COLUMN `checkOutRecordedAt` DATETIME(3) NULL,
+    ADD COLUMN `checkOutType` ENUM('MANUAL', 'AUTO') NULL;
+
+CREATE TABLE `MissedCheckInClaim` (
+    `id` CHAR(36) NOT NULL,
+    `employeeId` CHAR(36) NOT NULL,
+    `workDate` CHAR(10) NOT NULL,
+    `claimedCheckInTime` VARCHAR(5) NOT NULL,
+    `claimedCheckOutTime` VARCHAR(5) NOT NULL,
+    `taskDescription` VARCHAR(500) NOT NULL,
+    `reason` TEXT NOT NULL,
+    `truthConfirmed` BOOLEAN NOT NULL DEFAULT false,
+    `status` ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    `requestedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `reviewedAt` DATETIME(3) NULL,
+    `reviewedByUserId` CHAR(36) NULL,
+    `reviewNote` TEXT NULL,
+    `version` INTEGER NOT NULL DEFAULT 0,
+    `idempotencyKey` VARCHAR(100) NOT NULL,
+    `pendingKey` VARCHAR(64) NULL,
+    `attendanceId` CHAR(36) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+    UNIQUE INDEX `MissedCheckInClaim_pendingKey_key` (`pendingKey`),
+    UNIQUE INDEX `MissedCheckInClaim_attendanceId_key` (`attendanceId`),
+    UNIQUE INDEX `MissedCheckInClaim_employeeId_idempotencyKey_key` (`employeeId`, `idempotencyKey`),
+    INDEX `MissedCheckInClaim_employeeId_workDate_status_idx` (`employeeId`, `workDate`, `status`),
+    INDEX `MissedCheckInClaim_status_requestedAt_idx` (`status`, `requestedAt`),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `MissedCheckInClaim_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `Employee` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `MissedCheckInClaim_reviewedByUserId_fkey` FOREIGN KEY (`reviewedByUserId`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `MissedCheckInClaim_attendanceId_fkey` FOREIGN KEY (`attendanceId`) REFERENCES `Attendance` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

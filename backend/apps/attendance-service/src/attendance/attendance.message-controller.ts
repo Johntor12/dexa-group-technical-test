@@ -63,6 +63,11 @@ export class AttendanceMessageController {
       this.attendance.today(await this.principal(e)),
     );
   }
+  @MessagePattern(P.checkOut) checkOut(@Payload() e: Envelope) {
+    return rpcResult(async () =>
+      this.attendance.checkOut(await this.principal(e)),
+    );
+  }
   @MessagePattern(P.attendance) detail(@Payload() e: Envelope) {
     return rpcResult(async () =>
       this.attendance.detail(

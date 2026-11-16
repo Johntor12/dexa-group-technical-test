@@ -11,6 +11,7 @@ import {
   CorrectionInboxDto,
   IdDto,
   ListDto,
+  MissedCheckInClaimDto,
 } from '../../../../libs/contracts/src/dto.js';
 import {
   patterns as P,
@@ -100,6 +101,29 @@ export class CorrectionsMessageController {
         validated(IdDto, { id: d.id }).id,
         validated(IdDto, { id: d.evidenceId }).id,
       );
+    });
+  }
+  @MessagePattern(P.missedCheckInCreate) createMissedCheckIn(@Payload() e: Envelope) {
+    return rpcResult(async () => this.service.createMissedCheckIn(await this.principal(e), validated(MissedCheckInClaimDto, e.data)));
+  }
+  @MessagePattern(P.missedCheckInMine) missedCheckInMine(@Payload() e: Envelope) {
+    return rpcResult(async () => this.service.missedCheckInMine(await this.principal(e), validated(ListDto, e.data)));
+  }
+  @MessagePattern(P.missedCheckInPending) missedCheckInPending(@Payload() e: Envelope) {
+    return rpcResult(async () => this.service.missedCheckInPending(await this.principal(e), validated(CorrectionInboxDto, e.data)));
+  }
+  @MessagePattern(P.missedCheckInApprove) approveMissedCheckIn(@Payload() e: Envelope) {
+    return rpcResult(async () => {
+      const p = await this.principal(e);
+      const d = e.data as { id: string; note?: string };
+      return this.service.decideMissedCheckIn(p, validated(IdDto, { id: d.id }).id, 'APPROVED', validated(CorrectionDecisionDto, { note: d.note }).note);
+    });
+  }
+  @MessagePattern(P.missedCheckInReject) rejectMissedCheckIn(@Payload() e: Envelope) {
+    return rpcResult(async () => {
+      const p = await this.principal(e);
+      const d = e.data as { id: string; reason: string };
+      return this.service.decideMissedCheckIn(p, validated(IdDto, { id: d.id }).id, 'REJECTED', validated(CorrectionRejectDto, { reason: d.reason }).reason);
     });
   }
 }

@@ -34,6 +34,7 @@ export const patterns = {
   list: 'attendance.list',
   mine: 'attendance.mine',
   today: 'attendance.today',
+  checkOut: 'attendance.checkOut',
   attendance: 'attendance.detail',
   evidence: 'attendance.evidence',
   sweep: 'evidence.sweep',
@@ -47,4 +48,9 @@ export const patterns = {
   correctionReject: 'correction.reject',
   correctionCancel: 'correction.cancel',
   correctionEvidence: 'correction.evidence',
+  missedCheckInCreate: 'missedCheckIn.create',
+  missedCheckInMine: 'missedCheckIn.mine',
+  missedCheckInPending: 'missedCheckIn.pending',
+  missedCheckInApprove: 'missedCheckIn.approve',
+  missedCheckInReject: 'missedCheckIn.reject',
 } as const;

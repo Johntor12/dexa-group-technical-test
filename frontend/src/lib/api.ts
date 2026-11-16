@@ -28,7 +28,12 @@ export async function api<T>(
     );
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const rawError = await response.text().catch(() => "");
+    let error: { message?: string | string[] } = {};
+    if (rawError.trim()) {
+      try { error = JSON.parse(rawError) as { message?: string | string[] }; }
+      catch { error = { message: rawError }; }
+    }
     throw new ApiError(
       Array.isArray(error.message)
         ? error.message.join("; ")
@@ -38,7 +43,15 @@ export async function api<T>(
   }
   if (response.headers.get("content-type")?.startsWith("image/"))
     return (await response.blob()) as T;
-  return response.json() as Promise<T>;
+  // Nest may return 204 (or an empty body) for nullable resources such as
+  // /attendances/me/today. Treat that as null instead of throwing a JSON parse error.
+  const raw = await response.text();
+  if (!raw.trim()) return null as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new ApiError("Backend mengirim respons yang bukan JSON valid.", response.status);
+  }
 }
 export interface User {
   userId: string;
@@ -66,9 +79,31 @@ export interface Attendance {
   latitude: number | null;
   longitude: number | null;
   locationAccuracy: number | null;
+  taskDescription?: string | null;
   wfhReason: string | null;
   source?: 'DIRECT' | 'CORRECTION';
   correctionRequestId?: string | null;
+  checkInPhotoCapturedAt?: string | null;
+  checkInPhotoOffset?: string | null;
+  checkOutDueAt?: string | null;
+  checkOutAt?: string | null;
+  checkOutRecordedAt?: string | null;
+  checkOutType?: 'MANUAL' | 'AUTO' | null;
+}
+export interface MissedCheckInClaim {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  claimedCheckInTime: string;
+  claimedCheckOutTime: string;
+  taskDescription: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  requestedAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  attendance?: Attendance | null;
+  employee?: { fullName: string; employeeNumber: string; department: DepartmentCode };
 }
 export interface CorrectionDay { workDate: string; status: 'NOT_RECORDED' | 'CORRECTION_PENDING' | 'CORRECTION_APPROVED' | 'CORRECTION_REJECTED' | 'SUBMITTED'; requestId: string | null; submittedAt: string | null; reviewedAt: string | null; reviewNote: string | null }
 export interface CorrectionRequest {

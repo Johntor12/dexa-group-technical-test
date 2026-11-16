@@ -34,6 +34,7 @@ export class AttendanceService {
     }
     await this.storage.verify(d);
     const now = new Date();
+    const checkOutDueAt = new Date(now.getTime() + 8 * 60 * 60 * 1000);
     try {
       const record = await this.repo.db.$transaction(async (tx) =>
         tx.attendance.create({
@@ -47,7 +48,11 @@ export class AttendanceService {
             latitude: d.latitude,
             longitude: d.longitude,
             locationAccuracy: d.locationAccuracy,
+            taskDescription: d.taskDescription?.trim() || null,
             wfhReason: d.wfhReason?.trim() || null,
+            checkInPhotoCapturedAt: d.checkInPhotoCapturedAt,
+            checkInPhotoOffset: d.checkInPhotoOffset ?? null,
+            checkOutDueAt,
             evidence: {
               create: {
                 storageKey: d.storageKey,
@@ -112,6 +117,7 @@ export class AttendanceService {
         skip: (q.page - 1) * q.limit,
         take: q.limit,
         orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }],
+        include: { missedCheckInClaim: true },
       }),
       this.repo.db.attendance.count({ where }),
     ]);
@@ -120,6 +126,7 @@ export class AttendanceService {
   async today(p: Principal) {
     if (p.role !== 'EMPLOYEE' || !p.employee)
       fail(403, 'FORBIDDEN', 'Employee access required.');
+    await this.closeDueSessions(new Date());
     return this.repo.db.attendance.findUnique({
       where: {
         employeeId_workDate: {
@@ -127,10 +134,57 @@ export class AttendanceService {
           workDate: workDate(),
         },
       },
+      include: { missedCheckInClaim: true },
     });
   }
+  async checkOut(p: Principal) {
+    if (p.role !== 'EMPLOYEE' || !p.employee)
+      fail(403, 'FORBIDDEN', 'Only employees may check out.');
+    const employeeId = p.employee.id;
+    const today = workDate();
+    const row = await this.repo.db.attendance.findUnique({
+      where: { employeeId_workDate: { employeeId, workDate: today } },
+    });
+    if (!row) fail(409, 'CHECKIN_REQUIRED', 'Check in before checking out.');
+    if (row.checkOutAt) return row;
+    const now = new Date();
+    const automatic = !!row.checkOutDueAt && row.checkOutDueAt <= now;
+    const checkOutAt = automatic ? row.checkOutDueAt! : now;
+    await this.repo.db.attendance.updateMany({
+      where: { id: row.id, checkOutAt: null },
+      data: {
+        checkOutAt,
+        checkOutRecordedAt: now,
+        checkOutType: automatic ? 'AUTO' : 'MANUAL',
+      },
+    });
+    return this.repo.db.attendance.findUniqueOrThrow({ where: { id: row.id } });
+  }
+  async closeDueSessions(now = new Date()) {
+    const due = await this.repo.db.attendance.findMany({
+      where: { checkOutAt: null, checkOutDueAt: { lte: now } },
+      select: { id: true, checkOutDueAt: true },
+      take: 100,
+    });
+    let closed = 0;
+    for (const row of due) {
+      const updated = await this.repo.db.attendance.updateMany({
+        where: { id: row.id, checkOutAt: null },
+        data: {
+          checkOutAt: row.checkOutDueAt,
+          checkOutRecordedAt: now,
+          checkOutType: 'AUTO',
+        },
+      });
+      closed += updated.count;
+    }
+    return closed;
+  }
   async detail(p: Principal, id: string) {
-    const row = await this.repo.db.attendance.findUnique({ where: { id } });
+    const row = await this.repo.db.attendance.findUnique({
+      where: { id },
+      include: { missedCheckInClaim: true },
+    });
     if (!row) fail(404, 'NOT_FOUND', 'Attendance not found.');
     if (p.role !== 'HRD' && row.employeeId !== p.employee?.id)
       fail(403, 'FORBIDDEN', 'You cannot view this attendance.');

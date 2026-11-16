@@ -77,17 +77,23 @@ export class EmployeesService {
   }
   async list(p: Principal, q: ListDto) {
     this.authorize(p);
+    const filters: Record<string, unknown>[] = [];
+    if (q.search)
+      filters.push({
+        OR: [
+          { fullName: { contains: q.search } },
+          { employeeNumber: { contains: q.search } },
+          { user: { email: { contains: q.search } } },
+        ],
+      });
+    if (q.employeeStatus === 'ACTIVE')
+      filters.push({ active: true, user: { active: true } });
+    if (q.employeeStatus === 'INACTIVE') filters.push({ active: false });
+    if (q.employeeStatus === 'PENDING_ACTIVATION')
+      filters.push({ active: true, user: { active: false } });
     const where = {
       ...(q.department ? { department: q.department } : {}),
-      ...(q.search
-        ? {
-            OR: [
-              { fullName: { contains: q.search } },
-              { employeeNumber: { contains: q.search } },
-              { user: { email: { contains: q.search } } },
-            ],
-          }
-        : {}),
+      ...(filters.length ? { AND: filters } : {}),
     };
     const [data, total] = await this.repo.db.$transaction([
       this.repo.db.employee.findMany({

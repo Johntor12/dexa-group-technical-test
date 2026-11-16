@@ -54,7 +54,7 @@ npm start
 - Liveness: http://localhost:3000/health
 - Database/downstream readiness: http://localhost:3000/health/ready
 
-Akun demo: SEED_HRD_EMAIL, SEED_EMPLOYEE_EMAIL, SEED_PASSWORD dalam .env. Password tidak dicetak di dokumentasi/log. Seed tidak mereset akun yang sudah ada. Token frontend disimpan di memori; refresh membutuhkan login ulang.
+Akun seed demo memakai nama sintetis yang realistis dan email berurutan berdasarkan role/departemen. Admin HRD berasal dari `SEED_HRD_EMAIL` (default `hrd.admin01@pharmawork.test`), reviewer dari `SEED_REVIEWER_EMAIL` (default `hrd.reviewer.it01@pharmawork.test`), dan karyawan dari `SEED_EMPLOYEE_EMAIL` untuk IT (default `employee.it01@pharmawork.test`) serta alamat berurutan seperti `employee.sales01@pharmawork.test` dan `employee.finance01@pharmawork.test` untuk departemen lainnya. Seed mencakup satu karyawan untuk setiap departemen. Semua akun baru memakai `SEED_PASSWORD`; password tidak dicetak di dokumentasi/log. Seed tidak mereset password akun yang sudah ada. Tiga identitas seed lama yang dikenal dipindahkan ke email baru dengan mempertahankan ID dan relasi audit/koreksi, lalu sesi aktifnya dicabut. Seed akan berhenti jika email lama dan penggantinya sama-sama sudah dipakai akun berbeda, agar data tidak digabung atau dihapus diam-diam. Token frontend disimpan di memori; refresh membutuhkan login ulang.
 
 Alur akun baru: HRD login → Data karyawan → Tambah karyawan → isi data tanpa kata sandi → salin tautan aktivasi → karyawan membuka `/activate/:token` dan membuat kata sandi → login. API terkait: `POST /api/v1/employees`, `POST /api/v1/employees/:id/activation-link` (HRD), dan `POST /api/v1/auth/activate` (publik, token sekali pakai). Jalankan `npm run prisma:migrate:deploy` setelah menarik perubahan skema pada database lain.
 
@@ -79,6 +79,14 @@ npm run start:dev
 Compose hanya menyediakan MySQL. Docker tidak tersedia di mesin verifikasi, sehingga YAML Compose belum dieksekusi di sini. Untuk MySQL sendiri, buat DB dan akun aplikasi lalu ubah DATABASE_URL; URL-encode password. Helper db:start:local khusus instance Windows yang sudah diinisialisasi pada workspace ini.
 
 Perubahan schema development: npm run prisma:migrate:dev -- --name nama_perubahan. Deployment memakai prisma:migrate:deploy, bukan migrate dev. Backup DB dan evidence bersama.
+
+## Konfigurasi database production (TiDB Cloud)
+
+Template variabel production ada di [.env.production.example](.env.production.example). Isi environment variables melalui secret manager/platform deployment, bukan commit file `.env` berisi password. Set `NODE_ENV=production`; backend mewajibkan `TIDB_CA_PATH` dan memverifikasi sertifikat TLS TiDB (TLS 1.2+). Pasang CA PEM yang diunduh dari TiDB Cloud pada path tersebut. Prisma CLI menggunakan `DATABASE_URL` dengan `sslaccept=strict` dan `sslcert` yang menunjuk CA yang sama.
+
+**Jangan gunakan database `sys` untuk tabel aplikasi.** Buat database terpisah bernama `pharmawork` (atau nama aplikasi khusus) di TiDB Cloud, lalu pakai nama itu pada URL. `sys` adalah database sistem dan akun aplikasi sebaiknya hanya diberi hak pada database aplikasi. Pastikan alamat server production diizinkan pada TiDB Cloud IP Access List sebelum migrasi.
+
+Kredensial database yang pernah ditempel ke percakapan perlu dirotasi di TiDB Cloud sebelum dipakai production. Masukkan password baru ke `TIDB_PASSWORD`/`DATABASE_URL` di secret manager; encode karakter khusus URL (termasuk `@`, `:`, `/`, `?`, `#`, dan `&`). Setelah CA dan secret terpasang, jalankan `npm run prisma:migrate:deploy` satu kali dari job deployment, lalu jalankan layanan. Jangan jalankan `prisma:seed` pada production karena seed berisi akun demo.
 
 ## Verifikasi
 
@@ -126,6 +134,18 @@ INSERT INTO CorrectionEligibleDay (id, employeeId, workDate, note)
 VALUES (UUID(), '<employee-uuid>', '2026-11-12', 'WFH disetujui');
 ```
 
-Seed membuat `SEED_REVIEWER_EMAIL` (default `reviewer@pharmawork.test`) dengan kata sandi `SEED_PASSWORD` dan grant `ATTENDANCE_CORRECTION_REVIEW` **hanya untuk departemen IT**. HRD biasa tidak memperoleh grant. Reviewer lain perlu grant eksplisit per departemen pada tabel `CorrectionReviewGrant`; pengguna nonaktif ditolak oleh autentikasi dan pemilik permintaan tidak dapat menyetujui sendiri. Pengajuan ulang setelah ditolak diperbolehkan selama jendela masih berlaku, dengan tautan `priorRejectedRequestId` dan riwayat permintaan lama tetap tersimpan.
+Seed membuat `SEED_REVIEWER_EMAIL` (default `hrd.reviewer.it01@pharmawork.test`) dengan kata sandi `SEED_PASSWORD` dan grant `ATTENDANCE_CORRECTION_REVIEW` **hanya untuk departemen IT**. HRD biasa tidak memperoleh grant. Reviewer lain perlu grant eksplisit per departemen pada tabel `CorrectionReviewGrant`; pengguna nonaktif ditolak oleh autentikasi dan pemilik permintaan tidak dapat menyetujui sendiri. Pengajuan ulang setelah ditolak diperbolehkan selama jendela masih berlaku, dengan tautan `priorRejectedRequestId` dan riwayat permintaan lama tetap tersimpan.
 
 API baru ada di `/api/v1/attendance-corrections`: `GET eligible-days`, `POST /` multipart (`workDate`, `reason`, `evidence`, header `Idempotency-Key`), `GET me`, `GET pending?status=PENDING|APPROVED|REJECTED`, `GET :id`, `GET :id/evidence/:evidenceId`, `POST :id/cancel`, `POST :id/approve`, dan `POST :id/reject`. Keputusan serta pembatalan ditulis bersama audit dalam transaksi. Semua bukti tetap pada volume privat yang sama. Tidak ada endpoint untuk HRD mengubah absensi asli.
+
+## Task pada absensi langsung
+
+Form employee meminta deskripsi task yang dikerjakan dan alasan WFH tetap opsional. `taskDescription` ditambahkan sebagai kolom nullable lewat migrasi non-destruktif `20261116120000_attendance_task`; baris absensi lama dan absensi koreksi tetap valid tanpa nilai task. Kontrak UI baru mewajibkan task untuk check-in langsung. Monitoring mengurutkan berdasarkan `submittedAt` terbaru terlebih dahulu.
+
+## Check-in, check-out, dan klaim lupa check-in
+
+Migrasi aditif `20261116130000_checkin_checkout_claims` menambahkan metadata waktu pengambilan foto, batas check-out, waktu check-out, dan tabel klaim. Terapkan migrasi berurutan dengan `npm run prisma:migrate:deploy`; foto/absensi lama tetap tersimpan. Endpoint `POST /api/v1/attendances/photo-metadata` membaca EXIF `DateTimeOriginal` dan offset opsional dari foto sebelum pengiriman. Check-in akhir memvalidasi ulang foto, menyimpan waktu resmi dari server di `submittedAt`, dan menjadwalkan check-out otomatis tepat 8 jam kemudian. Waktu EXIF adalah metadata foto yang terpisah, bukan sumber hitungan durasi.
+
+Karyawan mengirim check-out manual melalui `POST /api/v1/attendances/me/check-out`; tidak ada foto kedua. Sweeper layanan attendance menutup sesi yang jatuh tempo dengan `checkOutAt` sama dengan batas 8 jam dan menyimpan waktu pencatatan otomatis terpisah. Akses `GET /attendances/me/today` juga memproses sesi jatuh tempo sebagai fallback.
+
+Jika check-in terlupa, employee dapat mengirim `POST /api/v1/attendance-corrections/missed-checkin` dengan tanggal lampau, perkiraan waktu mulai/selesai, task, alasan, konfirmasi kebenaran, dan `Idempotency-Key`. Pengajuan tidak langsung menjadi kehadiran. Reviewer harus memiliki grant departemen eksplisit; keputusan tersedia pada `POST /missed-checkin/:id/approve|reject`. Saat disetujui, `submittedAt` mencatat waktu persetujuan aktual dari server; waktu klaim tetap tersimpan terpisah. HRD tanpa grant tetap hanya dapat membaca catatan asli. Daftar employee dan antrean reviewer tersedia pada `/missed-checkin/me` dan `/missed-checkin/pending`.
