@@ -43,6 +43,8 @@ npm run start:dev:attendance
 npm run start:dev:gateway
 ```
 
+`npm start` menjalankan ketiga service dari hasil build (`dist`). Jalankan `npm run build` terlebih dahulu; jangan gunakan `node dist/apps/api-gateway/src/main.js` sendirian karena login dan fitur API memerlukan Employee Service, sementara absensi memerlukan Attendance Service.
+
 Dari folder frontend pada terminal lain:
 ```powershell
 npm start
@@ -80,13 +82,20 @@ Compose hanya menyediakan MySQL. Docker tidak tersedia di mesin verifikasi, sehi
 
 Perubahan schema development: npm run prisma:migrate:dev -- --name nama_perubahan. Deployment memakai prisma:migrate:deploy, bukan migrate dev. Backup DB dan evidence bersama.
 
-## Konfigurasi database production (TiDB Cloud)
+## Konfigurasi production dan deploy backend
 
-Template variabel production ada di [.env.production.example](.env.production.example). Isi environment variables melalui secret manager/platform deployment, bukan commit file `.env` berisi password. Set `NODE_ENV=production`; backend mewajibkan `TIDB_CA_PATH` dan memverifikasi sertifikat TLS TiDB (TLS 1.2+). Pasang CA PEM yang diunduh dari TiDB Cloud pada path tersebut. Prisma CLI menggunakan `DATABASE_URL` dengan `sslaccept=strict` dan `sslcert` yang menunjuk CA yang sama.
+Gunakan satu sumber nilai production: `.env.production` untuk menjalankan backend dari VM/lokal, atau environment/secrets platform hosting. File `.env.production` lokal **diabaikan Git** dan tidak perlu di-upload. [.env.production.example](.env.production.example) hanyalah template untuk menyalin nilai yang sama ke hosting; template ini tidak pernah dibaca otomatis. Script production membaca `.env.production` jika file tersedia, dan tetap menerima environment variables dari platform (nilai platform mengungguli file).
 
-**Jangan gunakan database `sys` untuk tabel aplikasi.** Buat database terpisah bernama `pharmawork` (atau nama aplikasi khusus) di TiDB Cloud, lalu pakai nama itu pada URL. `sys` adalah database sistem dan akun aplikasi sebaiknya hanya diberi hak pada database aplikasi. Pastikan alamat server production diizinkan pada TiDB Cloud IP Access List sebelum migrasi.
+CA project berada di `backend/run/secrets/tidb-ca.pem`. Path production relatif ke working directory `backend`: `TIDB_CA_PATH=run/secrets/tidb-ca.pem`. Jika hosting tidak membawa file tersebut, mount CA pada server dan set `TIDB_CA_PATH` ke path mount yang sebenarnya. URL Prisma menggunakan TLS strict; `prisma.config.ts` menyamakan `sslcert` dengan `TIDB_CA_PATH`. Database aplikasi `pharmawork` dan delapan migrasi awal sudah disiapkan. Jangan gunakan database sistem `sys`.
 
-Kredensial database yang pernah ditempel ke percakapan perlu dirotasi di TiDB Cloud sebelum dipakai production. Masukkan password baru ke `TIDB_PASSWORD`/`DATABASE_URL` di secret manager; encode karakter khusus URL (termasuk `@`, `:`, `/`, `?`, `#`, dan `&`). Setelah CA dan secret terpasang, jalankan `npm run prisma:migrate:deploy` satu kali dari job deployment, lalu jalankan layanan. Jangan jalankan `prisma:seed` pada production karena seed berisi akun demo.
+Untuk hosting dengan Root Directory `backend`, gunakan:
+
+- Build command: `npm ci --include=dev && npm run build` (Prisma CLI and TypeScript are build-time dependencies).
+- Start command: `npm start`
+- Set variabel dari `.env.production.example` pada environment/secrets platform. Isi password TiDB yang aktif, dua secret acak berbeda (minimal 32 karakter), path CA, dan `CORS_ORIGIN=https://dexa-group-technical-test-frontend.vercel.app`.
+- Jalankan `npm run prisma:migrate:deploy:prod` sebagai release/deploy command. Perintah ini idempotent dan memakai sumber env production yang sama. Jangan jalankan `prisma:seed` pada production.
+
+`npm start` menjalankan Employee Service, Attendance Service, dan API Gateway bersama dalam satu instance. Gateway menggunakan `PORT` dari hosting dan bind ke `0.0.0.0`; TCP services hanya bind di loopback instance tersebut. Setelah deploy, cek `https://<backend-domain>/health/ready` hingga status 200. Di Vercel, set `REACT_APP_API_URL=https://<backend-domain>/api/v1`, lalu redeploy frontend. `EVIDENCE_STORAGE_DIR` harus memakai persistent disk/volume supaya foto tidak hilang saat instance diganti.
 
 ## Verifikasi
 

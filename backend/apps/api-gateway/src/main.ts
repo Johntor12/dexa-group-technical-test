@@ -87,4 +87,7 @@ for (const path of Object.values(document.paths)) {
 }
 SwaggerModule.setup('api/docs', app, document);
 app.enableShutdownHooks();
-await app.listen(Number(process.env.API_PORT ?? 3000), '127.0.0.1');
+await app.listen(
+  Number(process.env.PORT ?? process.env.API_PORT ?? 3000),
+  process.env.API_HOST ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'),
+);

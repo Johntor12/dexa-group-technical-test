@@ -11,7 +11,8 @@ export const DepartmentCode = {
   DESIGN_DEPARTMENT: 'DESIGN_DEPARTMENT',
 } as const;
 
-export type DepartmentCode = (typeof DepartmentCode)[keyof typeof DepartmentCode];
+export type DepartmentCode =
+  (typeof DepartmentCode)[keyof typeof DepartmentCode];
 
 export const departments = [
   { code: DepartmentCode.SALES, name: 'Sales' },
@@ -22,6 +23,9 @@ export const departments = [
   { code: DepartmentCode.IT, name: 'IT' },
   { code: DepartmentCode.R_AND_D, name: 'R&D' },
   { code: DepartmentCode.LOGISTIC, name: 'Logistic' },
-  { code: DepartmentCode.ADMINISTRATION_AND_SECRETARY, name: 'Administration & Secretary' },
+  {
+    code: DepartmentCode.ADMINISTRATION_AND_SECRETARY,
+    name: 'Administration & Secretary',
+  },
   { code: DepartmentCode.DESIGN_DEPARTMENT, name: 'Design Department' },
 ] as const;
