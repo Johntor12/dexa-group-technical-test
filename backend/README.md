@@ -93,6 +93,7 @@ Untuk hosting dengan Root Directory `backend`, gunakan:
 - Build command: `npm ci --include=dev && npm run build` (Prisma CLI and TypeScript are build-time dependencies).
 - Start command: `npm start`
 - Set variabel dari `.env.production.example` pada environment/secrets platform. Isi password TiDB yang aktif, dua secret acak berbeda (minimal 32 karakter), path CA, dan `CORS_ORIGIN=https://dexa-group-technical-test-frontend.vercel.app`.
+- Pada Render, hanya API gateway yang menerima koneksi publik melalui `PORT`. Employee dan Attendance RPC berjalan internal pada `127.0.0.1`; jangan set `EMPLOYEE_SERVICE_HOST` atau `ATTENDANCE_SERVICE_HOST` ke `0.0.0.0` dan jangan expose port `4001`/`4002`. Error `InvalidTcpDataReceptionException` biasanya berarti ada koneksi non-Nest TCP yang mencapai port RPC.
 - Jalankan `npm run prisma:migrate:deploy:prod` sebagai release/deploy command. Perintah ini idempotent dan memakai sumber env production yang sama. Jangan jalankan `prisma:seed` pada production.
 
 `npm start` menjalankan Employee Service, Attendance Service, dan API Gateway bersama dalam satu instance. Gateway menggunakan `PORT` dari hosting dan bind ke `0.0.0.0`; TCP services hanya bind di loopback instance tersebut. Setelah deploy, cek `https://<backend-domain>/health/ready` hingga status 200. Di Vercel, set `REACT_APP_API_URL=https://<backend-domain>/api/v1`, lalu redeploy frontend. `EVIDENCE_STORAGE_DIR` harus memakai persistent disk/volume supaya foto tidak hilang saat instance diganti.

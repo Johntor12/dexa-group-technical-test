@@ -6,7 +6,10 @@ import { AppModule } from './app.module.js';
 secret('RPC_SECRET');
 const app = await NestFactory.createMicroservice(AppModule, {
   transport: Transport.TCP,
-  options: { host: config.employeeHost, port: config.employeePort },
+  // The RPC services run beside the API gateway in the same Render process
+  // group. Keep this listener private to the instance; only the HTTP gateway
+  // should bind to 0.0.0.0 and receive public traffic.
+  options: { host: '127.0.0.1', port: config.employeePort },
 });
 app.enableShutdownHooks();
 await app.listen();
