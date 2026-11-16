@@ -23,7 +23,10 @@ module.exports = (_env, argv) => ({
           options: {
             presets: [
               ['@babel/preset-env', { targets: 'defaults' }],
-              ['@babel/preset-react', { runtime: 'automatic' }],
+              [
+                '@babel/preset-react',
+                { runtime: 'automatic', development: argv.mode !== 'production' },
+              ],
               '@babel/preset-typescript',
             ],
           },
