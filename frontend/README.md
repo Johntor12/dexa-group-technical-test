@@ -38,13 +38,13 @@ npm run build
 
 Output produksi berada di `dist/`. Build menjalankan pemeriksaan TypeScript sebelum bundling. Deploy isi folder tersebut melalui static web server dengan fallback ke `index.html` jika menggunakan client-side routing.
 
-`REACT_APP_API_URL` menentukan alamat backend. Nilai ini dimasukkan ke bundle saat build; jangan isi dengan rahasia. Restart development server atau rebuild setelah mengubah `.env`.
+`API_URL` menentukan alamat backend. Nilai ini dimasukkan ke bundle saat build; jangan isi dengan rahasia. Restart development server atau rebuild setelah mengubah `.env`.
 
 Default API: `http://localhost:3000/api/v1`. Token bearer disimpan dalam memori; refresh halaman memerlukan login ulang. Akun demo tersedia pada variabel `SEED_*` di `backend/.env`.
 
 ## Deploy ke Vercel
 
-Pilih Root Directory `frontend`. Tambahkan environment variable Production `REACT_APP_API_URL` dengan nilai `https://<backend-domain>/api/v1`, kemudian redeploy frontend. Backend harus mengizinkan origin persis `https://dexa-group-technical-test-frontend.vercel.app` melalui `CORS_ORIGIN`.
+Pilih Root Directory `frontend`. Tambahkan environment variable Production `API_URL` dengan nilai `https://<backend-domain>/api/v1`, kemudian redeploy frontend. Backend harus mengizinkan origin persis `https://dexa-group-technical-test-frontend.vercel.app` melalui `CORS_ORIGIN`.
 
 ## Pengujian browser
 

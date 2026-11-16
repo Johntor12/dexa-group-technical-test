@@ -1,5 +1,4 @@
-export const API_URL =
-  process.env.REACT_APP_API_URL ?? "http://localhost:3000/api/v1";
+export const API_URL = process.env.API_URL ?? "http://localhost:3000/api/v1";
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -23,7 +22,7 @@ export async function api<T>(
     },
   }).catch(() => {
     throw new ApiError(
-      'Tidak dapat terhubung ke backend. Jalankan MySQL dan layanan NestJS, lalu coba lagi.',
+      "Tidak dapat terhubung ke backend. Jalankan MySQL dan layanan NestJS, lalu coba lagi.",
       0,
     );
   });
@@ -31,8 +30,11 @@ export async function api<T>(
     const rawError = await response.text().catch(() => "");
     let error: { message?: string | string[] } = {};
     if (rawError.trim()) {
-      try { error = JSON.parse(rawError) as { message?: string | string[] }; }
-      catch { error = { message: rawError }; }
+      try {
+        error = JSON.parse(rawError) as { message?: string | string[] };
+      } catch {
+        error = { message: rawError };
+      }
     }
     throw new ApiError(
       Array.isArray(error.message)
@@ -50,7 +52,10 @@ export async function api<T>(
   try {
     return JSON.parse(raw) as T;
   } catch {
-    throw new ApiError("Backend mengirim respons yang bukan JSON valid.", response.status);
+    throw new ApiError(
+      "Backend mengirim respons yang bukan JSON valid.",
+      response.status,
+    );
   }
 }
 export interface User {
@@ -81,14 +86,14 @@ export interface Attendance {
   locationAccuracy: number | null;
   taskDescription?: string | null;
   wfhReason: string | null;
-  source?: 'DIRECT' | 'CORRECTION';
+  source?: "DIRECT" | "CORRECTION";
   correctionRequestId?: string | null;
   checkInPhotoCapturedAt?: string | null;
   checkInPhotoOffset?: string | null;
   checkOutDueAt?: string | null;
   checkOutAt?: string | null;
   checkOutRecordedAt?: string | null;
-  checkOutType?: 'MANUAL' | 'AUTO' | null;
+  checkOutType?: "MANUAL" | "AUTO" | null;
 }
 export interface MissedCheckInClaim {
   id: string;
@@ -98,19 +103,51 @@ export interface MissedCheckInClaim {
   claimedCheckOutTime: string;
   taskDescription: string;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   requestedAt: string;
   reviewedAt: string | null;
   reviewNote: string | null;
   attendance?: Attendance | null;
-  employee?: { fullName: string; employeeNumber: string; department: DepartmentCode };
+  employee?: {
+    fullName: string;
+    employeeNumber: string;
+    department: DepartmentCode;
+  };
 }
-export interface CorrectionDay { workDate: string; status: 'NOT_RECORDED' | 'CORRECTION_PENDING' | 'CORRECTION_APPROVED' | 'CORRECTION_REJECTED' | 'SUBMITTED'; requestId: string | null; submittedAt: string | null; reviewedAt: string | null; reviewNote: string | null }
+export interface CorrectionDay {
+  workDate: string;
+  status:
+    | "NOT_RECORDED"
+    | "CORRECTION_PENDING"
+    | "CORRECTION_APPROVED"
+    | "CORRECTION_REJECTED"
+    | "SUBMITTED";
+  requestId: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
 export interface CorrectionRequest {
-  id: string; employeeId: string; workDate: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; requestedAt: string; reviewedAt: string | null; reviewNote: string | null;
-  employee: { fullName: string; employeeNumber: string; department: DepartmentCode };
+  id: string;
+  employeeId: string;
+  workDate: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  requestedAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  employee: {
+    fullName: string;
+    employeeNumber: string;
+    department: DepartmentCode;
+  };
   priorRejectedRequestId: string | null;
-  evidence: { id: string; mimeType: string; size: number; uploadedAt: string }[];
+  evidence: {
+    id: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string;
+  }[];
   attendance: Attendance | null;
 }
 export interface Page<T> {
@@ -122,5 +159,13 @@ export interface Department {
   name: string;
 }
 export type DepartmentCode =
-  | 'SALES' | 'MARKETING' | 'PRODUCTION' | 'FINANCE' | 'HR' | 'IT'
-  | 'R_AND_D' | 'LOGISTIC' | 'ADMINISTRATION_AND_SECRETARY' | 'DESIGN_DEPARTMENT';
+  | "SALES"
+  | "MARKETING"
+  | "PRODUCTION"
+  | "FINANCE"
+  | "HR"
+  | "IT"
+  | "R_AND_D"
+  | "LOGISTIC"
+  | "ADMINISTRATION_AND_SECRETARY"
+  | "DESIGN_DEPARTMENT";

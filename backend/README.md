@@ -4,14 +4,14 @@ Implementasi NestJS monorepo berdasarkan [PRD](02_PRD.md) dan [Architecture](03_
 
 ## Struktur dan fitur
 
-| Proses/folder | Tanggung jawab | Port |
-|---|---|---|
-| apps/api-gateway | REST, token issuer, guards, multipart, evidence streaming, Swagger | HTTP 3000 |
-| apps/employee-service | Kredensial, sesi, employee, enum departemen, audit | TCP 4001 |
-| apps/attendance-service | Absensi, evidence, idempotency, sweeper | TCP 4002 |
-| libs/contracts | DTO, principal, envelope, pola RPC | — |
-| libs/common | Database, RPC, storage, waktu, errors | — |
-| prisma | Schema, migrasi MySQL, seed sintetis | — |
+| Proses/folder           | Tanggung jawab                                                     | Port      |
+| ----------------------- | ------------------------------------------------------------------ | --------- |
+| apps/api-gateway        | REST, token issuer, guards, multipart, evidence streaming, Swagger | HTTP 3000 |
+| apps/employee-service   | Kredensial, sesi, employee, enum departemen, audit                 | TCP 4001  |
+| apps/attendance-service | Absensi, evidence, idempotency, sweeper                            | TCP 4002  |
+| libs/contracts          | DTO, principal, envelope, pola RPC                                 | —         |
+| libs/common             | Database, RPC, storage, waktu, errors                              | —         |
+| prisma                  | Schema, migrasi MySQL, seed sintetis                               | —         |
 
 Default bind loopback. Gateway tidak mengakses DB langsung. Attendance memvalidasi token melalui Employee Service; role dari browser tidak dipercaya. Shared MySQL dan private volume mengikuti kompromi MVP blueprint.
 
@@ -31,12 +31,14 @@ Folder src/ dan test/ lama dipertahankan sebagai referensi scaffold pengguna; ti
 MySQL 8.0.40 demo terpisah pada 127.0.0.1:3308, data di ../.local/mysql. Service MySQL80 yang sudah ada tidak diubah. .env lokal berisi koneksi, secret acak dan kredensial seed. Instance ini hanya untuk demo lokal.
 
 Dari folder backend:
+
 ```powershell
 npm run db:start:local
 npm run start:dev
 ```
 
 start:dev menjalankan ketiga proses dengan Nest CLI lokal. Alternatif tiga terminal:
+
 ```powershell
 npm run start:dev:employee
 npm run start:dev:attendance
@@ -46,6 +48,7 @@ npm run start:dev:gateway
 `npm start` menjalankan ketiga service dari hasil build (`dist`). Jalankan `npm run build` terlebih dahulu; jangan gunakan `node dist/apps/api-gateway/src/main.js` sendirian karena login dan fitur API memerlukan Employee Service, sementara absensi memerlukan Attendance Service.
 
 Dari folder frontend pada terminal lain:
+
 ```powershell
 npm start
 ```
@@ -96,7 +99,7 @@ Untuk hosting dengan Root Directory `backend`, gunakan:
 - Pada Render, hanya API gateway yang menerima koneksi publik melalui `PORT`. Employee dan Attendance RPC berjalan internal pada `127.0.0.1`; jangan set `EMPLOYEE_SERVICE_HOST` atau `ATTENDANCE_SERVICE_HOST` ke `0.0.0.0` dan jangan expose port `4001`/`4002`. Error `InvalidTcpDataReceptionException` biasanya berarti ada koneksi non-Nest TCP yang mencapai port RPC.
 - Jalankan `npm run prisma:migrate:deploy:prod` sebagai release/deploy command. Perintah ini idempotent dan memakai sumber env production yang sama. Jangan jalankan `prisma:seed` pada production.
 
-`npm start` menjalankan Employee Service, Attendance Service, dan API Gateway bersama dalam satu instance. Gateway menggunakan `PORT` dari hosting dan bind ke `0.0.0.0`; TCP services hanya bind di loopback instance tersebut. Setelah deploy, cek `https://<backend-domain>/health/ready` hingga status 200. Di Vercel, set `REACT_APP_API_URL=https://<backend-domain>/api/v1`, lalu redeploy frontend. `EVIDENCE_STORAGE_DIR` harus memakai persistent disk/volume supaya foto tidak hilang saat instance diganti.
+`npm start` menjalankan Employee Service, Attendance Service, dan API Gateway bersama dalam satu instance. Gateway menggunakan `PORT` dari hosting dan bind ke `0.0.0.0`; TCP services hanya bind di loopback instance tersebut. Setelah deploy, cek `https://<backend-domain>/health/ready` hingga status 200. Di Vercel, set `API_URL=https://<backend-domain>/api/v1`, lalu redeploy frontend. `EVIDENCE_STORAGE_DIR` harus memakai persistent disk/volume supaya foto tidak hilang saat instance diganti.
 
 ## Verifikasi
 
@@ -113,6 +116,7 @@ Unit tanpa DB. E2E membutuhkan DB dan seed; runner membuat tiga proses pada 4310
 Browser test dari frontend: npm run test:e2e. Membutuhkan Chrome lokal, backend sudah dibuild, DB dan seed. Runner memakai 4510/4511/4512 serta frontend 5174. Screenshot di ../.local/screenshots/. Foto test sintetis bukan bukti nyata.
 
 Hasil 14 November 2026:
+
 - Build backend dan React/Webpack berhasil.
 - 4 unit test: midnight Jakarta, signature foto, pagination, role injection.
 - 48 pemeriksaan integrasi: login, CRUD, audit, duplicate race/replay, invalid upload, ownership, deaktivasi/revocation, RPC failure, Swagger, cleanup evidence.
