@@ -156,6 +156,10 @@ export function SessionCompletion({
           <dt className="muted">Check-out server</dt>
           <dd>{dateTime(attendance.checkOutAt)}</dd>
         </div>
+        <div className="col-span-2 max-sm:col-span-1">
+          <dt className="muted">Uraian aktivitas</dt>
+          <dd className="whitespace-pre-wrap">{attendance.activityDescription || "Tidak diisi"}</dd>
+        </div>
         {attendance.checkOutRecordedAt &&
           attendance.checkOutType === "AUTO" && (
             <div>

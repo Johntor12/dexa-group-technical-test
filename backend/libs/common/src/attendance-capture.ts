@@ -51,12 +51,14 @@ export async function stageAttendanceCapturePair(
   }
 }
 
-export function captureFingerprint(evidence: StagedAttendanceEvidence[]) {
+export function captureFingerprint(evidence: StagedAttendanceEvidence[], context = '') {
   const canonical = [...evidence]
     .sort((a, b) => a.kind.localeCompare(b.kind))
     .map(({ kind, fingerprint }) => `${kind}:${fingerprint}`)
     .join('|');
-  return createHash('sha256').update(canonical).digest('hex');
+  return createHash('sha256')
+    .update(context ? `${canonical}|${context}` : canonical)
+    .digest('hex');
 }
 
 export async function removeStagedCaptures(

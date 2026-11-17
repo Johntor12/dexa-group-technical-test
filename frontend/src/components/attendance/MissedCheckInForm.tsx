@@ -7,6 +7,7 @@ export interface MissedClaimValues {
   claimedCheckOutTime: string;
   reason: string;
   truthConfirmed: boolean;
+  evidence: File | null;
 }
 export function MissedCheckInForm({
   busy,
@@ -17,12 +18,14 @@ export function MissedCheckInForm({
   onSubmit: (values: MissedClaimValues) => Promise<void>;
   onCancel: () => void;
 }) {
+  const [fileError, setFileError] = useState("");
   const [values, setValues] = useState<MissedClaimValues>({
     workDate: "",
     claimedCheckInTime: "",
     claimedCheckOutTime: "",
     reason: "",
     truthConfirmed: false,
+    evidence: null,
   });
   const update = (key: keyof MissedClaimValues, value: string | boolean) =>
     setValues((previous) => ({ ...previous, [key]: value }));
@@ -41,7 +44,7 @@ export function MissedCheckInForm({
         className="grid gap-[1vw]"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          void onSubmit(values);
+          if (values.evidence) void onSubmit(values);
         }}
       >
         <label>
@@ -84,6 +87,30 @@ export function MissedCheckInForm({
             onChange={(e) => update("reason", e.target.value)}
             placeholder="Jelaskan alasan dan konteks pengajuan (minimal 20 karakter)"
           />
+        </label>
+        <label>
+          Bukti aktivitas kerja *
+          <input
+            type="file"
+            required
+            accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              if (file && file.size > 5 * 1024 * 1024) {
+                event.target.value = "";
+                setValues((previous) => ({ ...previous, evidence: null }));
+                setFileError("Ukuran file maksimal 5 MiB.");
+                return;
+              }
+              setFileError("");
+              setValues((previous) => ({ ...previous, evidence: file }));
+            }}
+          />
+          <span className="small muted">Foto (JPEG, PNG, WebP) atau PDF · maksimal 5 MiB.</span>
+          {fileError && <span role="alert" className="text-sm text-red-700">{fileError}</span>}
+          {values.evidence && (
+            <span className="text-sm text-slate-700">{values.evidence.name} · {(values.evidence.size / (1024 * 1024)).toFixed(2)} MiB</span>
+          )}
         </label>
         <label className="flex items-start gap-[0.6vw]">
           <input

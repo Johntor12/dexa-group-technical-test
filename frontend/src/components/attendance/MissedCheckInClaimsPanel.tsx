@@ -2,6 +2,57 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import type { MissedCheckInClaim, Page, User } from "../../lib/api";
 
+type ClaimEvidenceInfo = { mimeType: string; size: number; recordedAt: string } | null | undefined;
+
+function ClaimEvidencePreview({ token, claimId, evidence }: { token: string; claimId: string; evidence: ClaimEvidenceInfo }) {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+
+  async function showEvidence() {
+    setLoading(true);
+    setError("");
+    try {
+      const file = await api<Blob>(`/attendance-claims/${claimId}/evidence`, token);
+      setUrl(URL.createObjectURL(file));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Bukti gagal dimuat.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="grid gap-2 rounded-xl border border-dexa-border bg-dexa-bg p-[1vw] max-sm:p-[3vw]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h4 className="font-semibold">Bukti aktivitas kerja</h4>
+          {evidence && <p className="small muted">{evidence.mimeType === "application/pdf" ? "Dokumen PDF" : "Foto"} · {(evidence.size / (1024 * 1024)).toFixed(2)} MiB</p>}
+          {!evidence && <p className="small muted">Klaim lama tidak memiliki lampiran.</p>}
+        </div>
+        {evidence && !url && (
+          <button type="button" disabled={loading} onClick={() => void showEvidence()}>
+            {loading ? "Memuat bukti…" : "Lihat bukti"}
+          </button>
+        )}
+      </div>
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {url && evidence?.mimeType.startsWith("image/") && (
+        <img src={url} alt="Bukti aktivitas kerja yang dilampirkan" className="max-h-[42vw] w-full rounded-lg object-contain" />
+      )}
+      {url && evidence?.mimeType === "application/pdf" && (
+        <div className="flex flex-wrap gap-3">
+          <a href={url} target="_blank" rel="noreferrer" className="font-semibold text-[#A52823] underline">Buka PDF</a>
+          <a href={url} download="bukti-klaim.pdf" className="font-semibold text-[#A52823] underline">Unduh PDF</a>
+        </div>
+      )}
+      {url && <button type="button" className="justify-self-start" onClick={() => setUrl("")}>Tutup bukti</button>}
+    </section>
+  );
+}
+
 export function MissedCheckInClaimsPanel({
   token,
   user,
@@ -169,6 +220,7 @@ export function MissedCheckInClaimsPanel({
                     </div>
                   )}
                 </dl>
+                <ClaimEvidencePreview token={token} claimId={row.id} evidence={row.evidence} />
                 {reviewer && row.status === "PENDING" && (
                   <div className="grid gap-2">
                     <button

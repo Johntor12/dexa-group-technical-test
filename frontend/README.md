@@ -23,8 +23,8 @@ Feature UI is organized under src/components/auth, layout, attendance, employees
 
 - **HRD:** dashboard → employee list → add/edit/deactivate employee → copy an activation link for the employee → monitoring, attendance detail and private evidence.
 - **Employee activation:** open the one-time activation URL → set a password → sign in.
-- **Employee WFH:** check-in with one live work-proof capture (screen or workspace) and a separate selfie → active session → check out with a new proof/selfie pair. If checkout is missed, the backend closes the session after eight hours.
-- **Forgotten check-in:** employee files a claim for an eligible past date → a reviewer with an explicit department grant reviews it → approval/rejection is recorded separately from original attendance.
+- **Employee WFH:** check-in with one live work-proof capture (screen or workspace) and a separate selfie → active session → check out with a new proof/selfie pair and an optional activity description. If checkout is missed, the backend closes the session after eight hours.
+- **Forgotten check-in:** employee files a claim for an eligible past date with a photo or PDF of work progress (maximum 5 MiB) → a reviewer with an explicit department grant reviews the claim and attachment → approval/rejection is recorded separately from original attendance.
 
 Capture evidence is for human review. The browser may display its device time as an overlay, but the server sets the official event times. The flow does not collect work tasks, WFH reason, or continuous location data. Browser camera/display access requires permission and a secure context (HTTPS or localhost).
 

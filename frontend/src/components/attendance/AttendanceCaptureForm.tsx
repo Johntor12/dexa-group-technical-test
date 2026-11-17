@@ -6,6 +6,7 @@ export interface AttendanceCaptureBundle {
   workProof: File;
   selfie: File;
   workProofType: WorkProofType;
+  activityDescription?: string;
 }
 
 type CaptureTarget = "workProof" | "selfie";
@@ -29,6 +30,7 @@ export function AttendanceCaptureForm({
     useState<WorkProofType>("WORKSPACE");
   const [workProof, setWorkProof] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
+  const [activityDescription, setActivityDescription] = useState("");
   const [target, setTarget] = useState<CaptureTarget | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState("");
@@ -169,7 +171,15 @@ export function AttendanceCaptureForm({
       className="grid gap-[1.2vw]"
       onSubmit={(event) => {
         event.preventDefault();
-        if (workProof && selfie) onSubmit({ workProof, selfie, workProofType });
+        if (workProof && selfie)
+          onSubmit({
+            workProof,
+            selfie,
+            workProofType,
+            ...(phase === "CHECKOUT"
+              ? { activityDescription: activityDescription.trim() }
+              : {}),
+          });
       }}
     >
       <fieldset className="grid gap-[1vw] rounded-2xl border border-[#A52823]/40 bg-[#FFF9F8] p-[1.2vw] shadow-sm max-sm:gap-[3vw] max-sm:p-[4vw]">
@@ -324,6 +334,19 @@ export function AttendanceCaptureForm({
         )}
       </fieldset>
 
+      {phase === "CHECKOUT" && (
+        <label className="grid gap-[0.5vw]">
+          Uraian aktivitas selama WFH <span className="font-normal text-slate-500">(opsional)</span>
+          <textarea
+            value={activityDescription}
+            onChange={(event) => setActivityDescription(event.target.value)}
+            maxLength={2000}
+            rows={4}
+            placeholder="Tuliskan ringkasan aktivitas kerja hari ini jika diperlukan."
+            className="w-full resize-y"
+          />
+        </label>
+      )}
       <p className="text-sm text-slate-600">
         Timestamp pada gambar memakai jam perangkat. Timestamp
         check-in/check-out resmi dicatat terpisah oleh server.

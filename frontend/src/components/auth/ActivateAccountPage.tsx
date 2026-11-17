@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../../lib/api'
+import { PasswordField } from '../ui/PasswordField'
 
 export function ActivateAccountPage({ token, onComplete }: { token: string; onComplete: () => void }) {
   const [password, setPassword] = useState('')
@@ -33,8 +34,24 @@ export function ActivateAccountPage({ token, onComplete }: { token: string; onCo
       <p className="muted">Buat kata sandi yang hanya Anda ketahui.</p>
       {error && <div role="alert" className="alert error">{error}</div>}
       <form onSubmit={submit}>
-        <label>Kata sandi baru<input type="password" autoComplete="new-password" required minLength={12} maxLength={72} value={password} onChange={event => setPassword(event.target.value)} /></label>
-        <label>Ulangi kata sandi<input type="password" autoComplete="new-password" required minLength={12} maxLength={72} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
+        <PasswordField
+          label="Kata sandi baru"
+          autoComplete="new-password"
+          required
+          minLength={12}
+          maxLength={72}
+          value={password}
+          onChange={event => setPassword(event.target.value)}
+        />
+        <PasswordField
+          label="Ulangi kata sandi"
+          autoComplete="new-password"
+          required
+          minLength={12}
+          maxLength={72}
+          value={confirmation}
+          onChange={event => setConfirmation(event.target.value)}
+        />
         <button className="primary" disabled={busy}>{busy ? 'Mengaktifkan...' : 'Aktifkan akun'}</button>
       </form>
       <p className="small muted">Jika tautan kedaluwarsa, minta HRD membuat tautan baru.</p>

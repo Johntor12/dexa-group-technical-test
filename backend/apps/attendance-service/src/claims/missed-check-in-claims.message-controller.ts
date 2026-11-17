@@ -46,6 +46,15 @@ export class MissedCheckInClaimsMessageController {
     );
   }
 
+  @MessagePattern(P.missedCheckInEvidence)
+  evidence(@Payload() envelope: Envelope) {
+    return rpcResult(async () => {
+      const principal = await this.principal(envelope);
+      const id = validated(IdDto, envelope.data).id;
+      return this.service.evidence(principal, id);
+    });
+  }
+
   @MessagePattern(P.missedCheckInMine)
   mine(@Payload() envelope: Envelope) {
     return rpcResult(async () =>

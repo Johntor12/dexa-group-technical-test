@@ -20,7 +20,7 @@ All authenticated HTTP routes use `Authorization: Bearer <accessToken>`. Tokens 
 | `DELETE` | `/employees/:id` | HRD | Deactivate employee; does not delete history. |
 | `POST` | `/employees/:id/activation-link` | HRD | Reissue an activation link for an eligible account. |
 | `POST` | `/attendances` | Employee | Check in with a live work-proof image and selfie. |
-| `POST` | `/attendances/me/check-out` | Employee | Check out with a second live evidence pair. |
+| `POST` | `/attendances/me/check-out` | Employee | Multipart check-out with a second live evidence pair and optional activity description (0–2,000 characters). |
 | `GET` | `/attendances/me/today` | Employee | Read today's session or `null`. |
 | `GET` | `/attendances/me` | Employee | Read own paginated attendance history. |
 | `GET` | `/attendances` | HRD | Read/filter/paginate original attendance records. HRD has no update/delete route. |
@@ -30,9 +30,10 @@ All authenticated HTTP routes use `Authorization: Bearer <accessToken>`. Tokens 
 | `GET` | `/attendances/:id` | HRD or owner | Read session detail. |
 | `GET` | `/attendances/:id/evidence` | HRD or owner | Read default check-in work-proof evidence for compatibility. |
 | `GET` | `/attendances/:id/evidence/:kind` | HRD or owner | Read one private evidence item by kind. |
-| `POST` | `/attendance-claims` | Employee | Submit a missed-check-in claim. Requires `Idempotency-Key`. |
+| `POST` | `/attendance-claims` | Employee | Submit a multipart missed-check-in claim with one required photo or PDF evidence file. Requires `Idempotency-Key`. |
 | `GET` | `/attendance-claims/me` | Employee | Read own claims. |
 | `GET` | `/attendance-claims/pending` | Granted reviewer | Read claims within granted departments. |
+| `GET` | `/attendance-claims/:id/evidence` | Claim owner or granted reviewer | Stream the private claim attachment after ownership/reviewer-scope checks. |
 | `POST` | `/attendance-claims/:id/approve` | Granted reviewer | Approve a pending claim. |
 | `POST` | `/attendance-claims/:id/reject` | Granted reviewer | Reject a pending claim with a reason. |
 | `GET` | `/health` | Public | Gateway liveness. |
@@ -42,11 +43,11 @@ All authenticated HTTP routes use `Authorization: Bearer <accessToken>`. Tokens 
 
 Both submission routes use multipart fields `workProof`, `selfie`, and `workProofType` (`SCREEN` or `WORKSPACE`) plus an `Idempotency-Key` header. Each photo is limited to 5 MiB and JPEG, PNG, or WebP with a matching file signature. No employee ID or authoritative attendance timestamp is accepted from the browser. The server creates event timestamps and Jakarta work date.
 
-Check-in requires `CHECKIN_WORK_PROOF` and `CHECKIN_SELFIE`; manual check-out requires `CHECKOUT_WORK_PROOF` and `CHECKOUT_SELFIE`. The automatic eight-hour close has no checkout evidence. Evidence kinds are `CHECKIN_WORK_PROOF`, `CHECKIN_SELFIE`, `CHECKOUT_WORK_PROOF`, and `CHECKOUT_SELFIE`.
+Check-in requires `CHECKIN_WORK_PROOF` and `CHECKIN_SELFIE`; manual check-out requires `CHECKOUT_WORK_PROOF` and `CHECKOUT_SELFIE`, plus the optional `activityDescription` form field (maximum 2,000 characters, no minimum). Blank activity is stored as null. The automatic eight-hour close has no checkout evidence or activity description. Evidence kinds are `CHECKIN_WORK_PROOF`, `CHECKIN_SELFIE`, `CHECKOUT_WORK_PROOF`, and `CHECKOUT_SELFIE`.
 
 ### Missed-check-in claim contract
 
-Claim body includes `workDate`, estimated `claimedCheckInTime` and `claimedCheckOutTime`, a reason, `truthConfirmed`, and an idempotency key. The default claim window is seven past days and is configurable with `MISSED_CHECKIN_CLAIM_WINDOW_DAYS`. Approval is a separate source of attendance; it does not rewrite original events or backdate the server decision timestamp.
+Claim multipart fields include `workDate`, estimated `claimedCheckInTime` and `claimedCheckOutTime`, a reason, `truthConfirmed`, and one required `evidence` file (JPEG, PNG, WebP, or PDF; maximum 5 MiB). The `Idempotency-Key` is sent in the request header. The default claim window is seven past days and is configurable with `MISSED_CHECKIN_CLAIM_WINDOW_DAYS`. Approval is a separate source of attendance; it does not rewrite original events or backdate the server decision timestamp.
 
 ### Query filters
 
@@ -66,7 +67,7 @@ Pattern constants are maintained in `libs/contracts/src/contracts.ts`; handlers 
 | `employees.list`, `employees.create`, `employees.detail`, `employees.update`, `employees.deactivate`, `employees.departments`, `employees.activation-link` | Employee Service | Employee administration and lifecycle. |
 | `attendance.submit`, `attendance.checkOut`, `attendance.today`, `attendance.mine`, `attendance.list`, `attendance.detail`, `attendance.evidence` | Attendance Service | Attendance lifecycle and reads. |
 | `attendance.hrDashboard`, `attendance.hrTodayMonitoring`, `attendance.hrMissingAttendance` | Attendance Service | HR monitoring projections. |
-| `missedCheckIn.create`, `missedCheckIn.mine`, `missedCheckIn.pending`, `missedCheckIn.approve`, `missedCheckIn.reject` | Attendance Service | Claim lifecycle and department-scoped review. |
+| `missedCheckIn.create`, `missedCheckIn.evidence`, `missedCheckIn.mine`, `missedCheckIn.pending`, `missedCheckIn.approve`, `missedCheckIn.reject` | Attendance Service | Claim lifecycle and department-scoped review. |
 | `evidence.sweep`, `health` | Owning service | Orphan cleanup and readiness checks. |
 
 RPC envelopes carry the shared secret, request ID, optional bearer token, and data. Receivers verify the secret and validate untrusted DTO data. User identity and authorization are rechecked downstream. TCP ports are private loopback listeners in the current single-host deployment.

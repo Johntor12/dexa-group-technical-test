@@ -12,12 +12,23 @@ export function imageType(bytes: Buffer) {
   fail(422, 'INVALID_PHOTO', 'Only JPEG, PNG, or WebP photos are accepted.');
 }
 
+const claimEvidenceMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+
+function claimEvidenceType(bytes: Buffer): (typeof claimEvidenceMimeTypes)[number] {
+  if (bytes.subarray(0, 5).toString('ascii') === '%PDF-') return 'application/pdf';
+  const detected = imageType(bytes);
+  if (detected === 'image/jpeg' || detected === 'image/png' || detected === 'image/webp')
+    return detected;
+  fail(422, 'INVALID_CLAIM_EVIDENCE', 'Only JPEG, PNG, WebP, or PDF files are accepted.');
+}
+
 @Injectable()
 export class PhotoStorage implements OnModuleInit {
   readonly root = resolve(process.env.EVIDENCE_STORAGE_DIR ?? 'storage/evidence');
   readonly provider: 'local' | 'supabase';
   private readonly bucket: string;
   private readonly supabase: ReturnType<typeof createClient> | null;
+  private bucketAllowedMimeTypes: string[] | null = null;
 
   constructor() {
     const requested = process.env.PHOTO_STORAGE_PROVIDER;
@@ -43,8 +54,9 @@ export class PhotoStorage implements OnModuleInit {
     if (typeof data.file_size_limit === 'number' && data.file_size_limit < 5242880)
       throw new Error('The attendance evidence bucket limit must allow files up to 5 MiB.');
     const allowed = data.allowed_mime_types;
+    this.bucketAllowedMimeTypes = allowed ?? null;
     if (allowed && ['image/jpeg', 'image/png', 'image/webp'].some((type) => !allowed.includes(type)))
-      throw new Error('The attendance evidence bucket must allow JPEG, PNG, and WebP.');
+      throw new Error('The private evidence bucket must allow JPEG, PNG, and WebP.');
   }
 
   private assertKey(key: string) {
@@ -70,6 +82,37 @@ export class PhotoStorage implements OnModuleInit {
       try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
     }
     return { storageKey, mimeType, size: bytes.length, fingerprint: createHash('sha256').update(bytes).digest('hex') };
+  }
+
+  async stageClaimEvidence(bytes: Buffer, mimeType: string) {
+    if (!bytes.length) fail(400, 'CLAIM_EVIDENCE_REQUIRED', 'Attach a photo or PDF as claim evidence.');
+    if (bytes.length > 5242880) fail(413, 'CLAIM_EVIDENCE_TOO_LARGE', 'Claim evidence must be 5 MiB or smaller.');
+    const detected = claimEvidenceType(bytes);
+    if (this.provider === 'supabase' && this.bucketAllowedMimeTypes && !this.bucketAllowedMimeTypes.includes(mimeType))
+      fail(503, 'STORAGE_FILE_TYPE_UNAVAILABLE', `The private Supabase bucket must allow ${mimeType} uploads.`);
+    if (detected !== mimeType)
+      fail(422, 'INVALID_CLAIM_EVIDENCE', 'File content does not match its declared type.');
+    const storageKey = randomUUID();
+    if (this.provider === 'supabase') {
+      const { error } = await this.supabase!.storage.from(this.bucket).upload(storageKey, Uint8Array.from(bytes).buffer, { contentType: mimeType, cacheControl: '0', upsert: false });
+      if (error) throw new Error('Supabase Storage upload failed: ' + error.name);
+    } else {
+      await mkdir(this.root, { recursive: true, mode: 0o700 });
+      const file = await open(this.path(storageKey), 'wx', 0o600);
+      try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
+    }
+    return {
+      storageKey,
+      mimeType,
+      size: bytes.length,
+      fingerprint: createHash('sha256').update(bytes).digest('hex'),
+    };
+  }
+
+  async verifyClaimEvidence(evidence: { storageKey: string; mimeType: string; size: number; fingerprint: string }) {
+    const bytes = await this.read(evidence.storageKey);
+    if (bytes.length !== evidence.size || claimEvidenceType(bytes) !== evidence.mimeType || createHash('sha256').update(bytes).digest('hex') !== evidence.fingerprint)
+      fail(422, 'INVALID_CLAIM_EVIDENCE', 'Claim evidence verification failed.');
   }
 
   async verify(d: { storageKey: string; mimeType: string; size: number; fingerprint: string }) {

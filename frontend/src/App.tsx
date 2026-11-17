@@ -602,6 +602,7 @@ function App() {
       data.append("workProof", bundle.workProof);
       data.append("selfie", bundle.selfie);
       data.append("workProofType", bundle.workProofType);
+      data.append("activityDescription", bundle.activityDescription ?? "");
       const record = await api<Attendance>("/attendances/me/check-out", token, {
         method: "POST",
         headers: { "Idempotency-Key": key.current },
@@ -626,14 +627,23 @@ function App() {
     claimedCheckOutTime: string;
     reason: string;
     truthConfirmed: boolean;
+    evidence: File | null;
   }) {
+    if (!values.evidence) return;
     setBusy(true);
     setError("");
     try {
+      const data = new FormData();
+      data.append("workDate", values.workDate);
+      data.append("claimedCheckInTime", values.claimedCheckInTime);
+      data.append("claimedCheckOutTime", values.claimedCheckOutTime);
+      data.append("reason", values.reason);
+      data.append("truthConfirmed", String(values.truthConfirmed));
+      data.append("evidence", values.evidence);
       const claim = await api<{ id: string }>("/attendance-claims", token, {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify(values),
+        body: data,
       });
       setNotice(
         `Klaim check-in dikirim untuk ditinjau. Referensi: ${claim.id}`,

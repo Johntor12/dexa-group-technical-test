@@ -15,8 +15,8 @@ flowchart LR
   AS -->|TCP RPC identity and reviewer grants| ES
   ES -->|Prisma| DB[(Shared MySQL / TiDB)]
   AS -->|Prisma| DB
-  GW -->|Private evidence upload/read| OBJ[(Supabase private bucket in production)]
-  AS -->|Evidence verification and orphan cleanup| OBJ
+  GW -->|Private check-in/check-out and claim file upload/read| OBJ[(Supabase private bucket in production)]
+  AS -->|Evidence verification, claim ownership checks, orphan cleanup| OBJ
 ```
 
 In development, `PhotoStorage` uses the local private storage adapter unless `PHOTO_STORAGE_PROVIDER` is set. In production, it defaults to Supabase and requires the private bucket and server-side credentials. The browser does not receive a public bucket URL; evidence goes through authenticated API routes.
@@ -72,7 +72,8 @@ erDiagram
   EMPLOYEE ||--o{ ATTENDANCE : "work sessions"
   EMPLOYEE ||--o{ MISSED_CHECK_IN_CLAIM : "claim owner"
   USER o|--o{ MISSED_CHECK_IN_CLAIM : "reviewer"
-  ATTENDANCE ||--o{ EVIDENCE : "private evidence metadata"
+  ATTENDANCE ||--o{ EVIDENCE : "private session evidence metadata"
+  MISSED_CHECK_IN_CLAIM ||--o| MISSED_CHECK_IN_CLAIM_EVIDENCE : "one private file attachment"
   ATTENDANCE ||--o| IDEMPOTENCY : "direct submission key"
   ATTENDANCE o|--o| MISSED_CHECK_IN_CLAIM : "attendance created on approval"
 
@@ -119,6 +120,7 @@ erDiagram
     datetime checkOutAt
     enum source
     enum checkOutType
+    text activityDescription nullable
   }
   EVIDENCE {
     char36 id PK
@@ -165,12 +167,21 @@ erDiagram
     char36 attendanceId FK_UK
     varchar100 idempotencyKey
   }
+  MISSED_CHECK_IN_CLAIM_EVIDENCE {
+    char36 id PK
+    char36 claimId FK_UK
+    char36 storageKey UK
+    varchar50 mimeType
+    int size
+    char64 sha256
+    datetime recordedAt
+  }
 ```
 
-`DepartmentCode`, `Role`, attendance source, evidence kind, work-proof type, checkout type and claim status are Prisma enums, not lookup tables. `AuditEvent` stores `actorId` and `employeeId` as identifiers plus JSON changes; the current Prisma schema does not declare relational FKs for those audit identifiers. Evidence bytes are held in the configured private storage provider; `Evidence` stores metadata and the storage key.
+`DepartmentCode`, `Role`, attendance source, evidence kind, work-proof type, checkout type and claim status are Prisma enums, not lookup tables. `AuditEvent` stores `actorId` and `employeeId` as identifiers plus JSON changes; the current Prisma schema does not declare relational FKs for those audit identifiers. Evidence bytes are held in the configured private storage provider; `Evidence` and `MissedCheckInClaimEvidence` store metadata and storage keys, while file bytes remain in private object/file storage.
 
 ## Data ownership and shared-database caveat
 
-Logical write ownership is Employee Service for accounts/employees/sessions/activation/audit and Attendance Service for attendance/evidence/idempotency/claims/review grants. One shared Prisma client schema and database credentials mean this ownership is conventional, not enforced at the DB permission level. The HR monitoring read methods in Attendance Service currently query a limited Employee/User projection for status tables. This is a documented read-side coupling and a clean-boundary improvement candidate; do not describe the services as data-isolated.
+Logical write ownership is Employee Service for accounts/employees/sessions/activation/audit and Attendance Service for attendance/evidence/idempotency/claims/claim attachments/review grants. One shared Prisma client schema and database credentials mean this ownership is conventional, not enforced at the DB permission level. The HR monitoring read methods in Attendance Service currently query a limited Employee/User projection for status tables. This is a documented read-side coupling and a clean-boundary improvement candidate; do not describe the services as data-isolated.
 
 See [DATA_OWNERSHIP.md](DATA_OWNERSHIP.md), [MODULE_MAP.md](MODULE_MAP.md), and [API_RPC_CONTRACTS.md](API_RPC_CONTRACTS.md) for detail.

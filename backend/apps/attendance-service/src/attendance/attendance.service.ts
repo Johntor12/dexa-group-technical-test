@@ -273,6 +273,7 @@ export class AttendanceService {
           checkOutType: 'MANUAL',
           checkOutIdempotencyKey: d.key,
           checkOutFingerprint: d.fingerprint,
+          activityDescription: d.activityDescription?.trim() || null,
         },
       });
       if (updated.count !== 1) return false;

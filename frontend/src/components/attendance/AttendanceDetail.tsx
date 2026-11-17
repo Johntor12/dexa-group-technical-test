@@ -221,6 +221,12 @@ export function AttendanceDetail({
               {checkoutLabel}
             </dd>
           </div>
+          <div className="col-span-2 min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-[1vw] max-sm:col-span-1 max-sm:p-3">
+            <dt className="mb-1 text-sm text-slate-500">Uraian aktivitas saat check-out</dt>
+            <dd className="whitespace-pre-wrap break-words font-semibold text-slate-900">
+              {attendance.activityDescription || "Tidak diisi"}
+            </dd>
+          </div>
         </dl>
       </section>
     </section>

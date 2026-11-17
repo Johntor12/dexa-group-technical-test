@@ -24,9 +24,9 @@ import {
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import type { Response } from 'express';
-import { AttendanceCaptureMetadataDto, CheckOutDto, ListDto } from '../../../../libs/contracts/src/dto.js';
+import { AttendanceCaptureMetadataDto, CheckOutDto, CheckOutMetadataDto, ListDto } from '../../../../libs/contracts/src/dto.js';
 import { RpcClients } from '../../../../libs/common/src/rpc.js';
-import { imageType, PhotoStorage } from '../../../../libs/common/src/storage.js';
+import { PhotoStorage } from '../../../../libs/common/src/storage.js';
 import { captureFingerprint, removeStagedCaptures, stageAttendanceCapturePair } from '../../../../libs/common/src/attendance-capture.js';
 import { AttendanceEvidenceKind } from '../../../../libs/contracts/src/attendance-evidence.js';
 import { DomainError, fail } from '../../../../libs/common/src/errors.js';
@@ -138,6 +138,11 @@ export class AttendanceController {
         workProof: { type: 'string', format: 'binary' },
         selfie: { type: 'string', format: 'binary' },
         workProofType: { type: 'string', enum: ['SCREEN', 'WORKSPACE'] },
+        activityDescription: {
+          type: 'string',
+          maxLength: 2000,
+          description: 'Optional work activity summary.',
+        },
       },
     },
   })
@@ -146,11 +151,11 @@ export class AttendanceController {
     FileFieldsInterceptor([
       { name: 'workProof', maxCount: 1 },
       { name: 'selfie', maxCount: 1 },
-    ], { storage: memoryStorage(), limits: { fileSize: 5242880, files: 2, fields: 1, parts: 3 } }),
+    ], { storage: memoryStorage(), limits: { fileSize: 5242880, files: 2, fields: 2, parts: 4 } }),
   )
   async checkOut(
     @UploadedFiles() files: { workProof?: Express.Multer.File[]; selfie?: Express.Multer.File[] },
-    @Body() body: AttendanceCaptureMetadataDto,
+    @Body() body: CheckOutMetadataDto,
     @Req() r: ApiRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -158,10 +163,10 @@ export class AttendanceController {
     if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(key))
       fail(400, 'INVALID_IDEMPOTENCY_KEY', 'Provide a valid Idempotency-Key header.');
     const evidence = await stageAttendanceCapturePair(this.storage, files, 'CHECKOUT');
-    const fingerprint = captureFingerprint(evidence);
+    const fingerprint = captureFingerprint(evidence, body.activityDescription?.trim() ?? "");
     try {
       const result = await this.rpc.call<{ record: unknown; replayed: boolean }>(
-        'attendance', P.checkOut, { ...body, evidence, fingerprint, key } satisfies CheckOutDto,
+        'attendance', P.checkOut, { ...body, activityDescription: body.activityDescription?.trim() || undefined, evidence, fingerprint, key } satisfies CheckOutDto,
         r.token, r.requestId,
       );
       if (result.replayed) await removeStagedCaptures(this.storage, evidence);

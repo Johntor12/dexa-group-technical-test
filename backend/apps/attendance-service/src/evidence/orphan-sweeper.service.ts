@@ -29,9 +29,8 @@ export class OrphanSweeper implements OnModuleInit, OnModuleDestroy {
     for (const key of await this.storage.candidates()) {
       // Aged files only. Transaction timeout is seconds; 24h grace excludes in-flight writes.
       if (
-        !(await this.repo.db.evidence.findUnique({
-          where: { storageKey: key },
-        }))
+        !(await this.repo.db.evidence.findUnique({ where: { storageKey: key } })) &&
+        !(await this.repo.db.missedCheckInClaimEvidence.findUnique({ where: { storageKey: key } }))
       ) {
         await this.storage.remove(key);
         removed++;

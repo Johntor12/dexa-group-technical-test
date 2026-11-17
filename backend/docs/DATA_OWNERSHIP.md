@@ -14,6 +14,7 @@
 | `Evidence` | Attendance Service | Evidence metadata and unique storage key; unique `(attendanceId, kind)`. Image bytes live in private object/file storage. |
 | `Idempotency` | Attendance Service | Direct attendance retry fingerprint and key; unique `(employeeId, key)` and one-to-one attendance relation. |
 | `MissedCheckInClaim` | Attendance Service | Requested past-date claim, review state, reviewer, actual review time and optional attendance created on approval. |
+| `MissedCheckInClaimEvidence` | Attendance Service | One private image/PDF attachment per claim, with private storage key, MIME type, size and checksum. Object bytes remain in the configured storage provider. |
 | `MissedCheckInReviewGrant` | Attendance Service | Explicit reviewer permission scoped to a department; unique `(userId, department, permission)`. |
 
 ## Important data rules

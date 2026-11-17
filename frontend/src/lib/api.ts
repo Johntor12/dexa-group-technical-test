@@ -43,7 +43,8 @@ export async function api<T>(
       response.status,
     );
   }
-  if (response.headers.get("content-type")?.startsWith("image/"))
+  const responseType = response.headers.get("content-type") ?? "";
+  if (responseType.startsWith("image/") || responseType.includes("application/pdf"))
     return (await response.blob()) as T;
   // Nest may return 204 (or an empty body) for nullable resources such as
   // /attendances/me/today. Treat that as null instead of throwing a JSON parse error.
@@ -87,6 +88,7 @@ export interface Attendance {
   checkOutAt?: string | null;
   checkOutRecordedAt?: string | null;
   checkOutType?: "MANUAL" | "AUTO" | null;
+  activityDescription?: string | null;
 }
 export interface MissedCheckInClaim {
   id: string;
@@ -99,6 +101,7 @@ export interface MissedCheckInClaim {
   requestedAt: string;
   reviewedAt: string | null;
   reviewNote: string | null;
+  evidence?: { mimeType: string; size: number; recordedAt: string } | null;
   attendance?: Attendance | null;
   employee?: {
     fullName: string;

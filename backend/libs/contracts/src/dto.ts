@@ -19,7 +19,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { DepartmentCode } from './department.js';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { AttendanceEvidenceKind, WorkProofType } from './attendance-evidence.js';
 export class LoginDto {
@@ -129,21 +129,53 @@ export class SubmitDto extends AttendanceCaptureMetadataDto {
   evidence!: StagedAttendanceEvidenceDto[];
 }
 
-export class CheckOutDto extends SubmitDto {}
+export class CheckOutMetadataDto extends AttendanceCaptureMetadataDto {
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @Length(0, 2000)
+  activityDescription?: string;
+}
+
+export class CheckOutDto extends SubmitDto {
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @Length(0, 2000)
+  activityDescription?: string;
+}
 export class AttendanceEvidenceRequestDto {
   @ApiProperty() @IsUUID() id!: string;
   @ApiProperty({ enum: Object.values(AttendanceEvidenceKind) })
   @IsEnum(AttendanceEvidenceKind)
   kind!: AttendanceEvidenceKind;
 }
-export class MissedCheckInClaimDto {
+export class MissedCheckInClaimFieldsDto {
   @ApiProperty() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDateString({ strict: true }) workDate!: string;
   @ApiProperty() @Matches(/^([01]\d|2[0-3]):[0-5]\d$/) claimedCheckInTime!: string;
   @ApiProperty() @Matches(/^([01]\d|2[0-3]):[0-5]\d$/) claimedCheckOutTime!: string;
   @ApiProperty() @IsString() @Length(20, 1000) reason!: string;
-  @ApiProperty() @IsBoolean() truthConfirmed!: boolean;
-  @ApiProperty() @Matches(/^[A-Za-z0-9_-]{1,100}$/) key!: string;
+  @ApiProperty()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean() truthConfirmed!: boolean;
 }
+
+export class StagedClaimEvidenceDto {
+  @ApiProperty({ enum: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] })
+  @IsIn(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+  mimeType!: string;
+  @ApiProperty() @IsUUID() storageKey!: string;
+  @ApiProperty() @IsInt() @Min(1) @Max(5242880) size!: number;
+  @ApiProperty() @Matches(/^[a-f0-9]{64}$/) fingerprint!: string;
+}
+
+export class MissedCheckInClaimDto extends MissedCheckInClaimFieldsDto {
+  @ApiProperty() @Matches(/^[A-Za-z0-9_-]{1,100}$/) key!: string;
+  @ApiProperty({ type: StagedClaimEvidenceDto })
+  @ValidateNested() @Type(() => StagedClaimEvidenceDto)
+  evidence!: StagedClaimEvidenceDto;
+}
+
 export function pageResult(data: unknown[], total: number, q: ListDto) {
   return {
     data,

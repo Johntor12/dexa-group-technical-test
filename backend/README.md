@@ -130,7 +130,7 @@ Typical Render commands:
 - Start: npm start
 - Release migration: npm run prisma:migrate:deploy:prod
 
-Copy variable names from [.env.production.example](.env.production.example) into the host's environment settings. Use distinct strong production secrets and the mounted TiDB CA path. Do not put secret values in Git, frontend variables, README files, or logs. Supabase variables are server-side only; configure a private bucket named by SUPABASE_STORAGE_BUCKET and allow JPEG/PNG/WebP up to 5 MiB. Apply only additive migrations through the release command; database reset is not a deployment step.
+Copy variable names from [.env.production.example](.env.production.example) into the host's environment settings. Use distinct strong production secrets and the mounted TiDB CA path. Do not put secret values in Git, frontend variables, README files, or logs. Supabase variables are server-side only; configure a private bucket named by SUPABASE_STORAGE_BUCKET and allow JPEG/PNG/WebP/PDF up to 5 MiB. Apply only additive migrations through the release command; database reset is not a deployment step. The migration `20261117180000_claim_evidence_checkout_activity` adds nullable checkout activity text and a claim attachment metadata table without deleting existing rows.
 
 ## API and service policies
 

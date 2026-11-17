@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Database } from '../../../../libs/common/src/database.js';
+import { PhotoStorage } from '../../../../libs/common/src/storage.js';
 import { fail } from '../../../../libs/common/src/errors.js';
 import { workDate } from '../../../../libs/common/src/time.js';
 import {
-  MissedCheckInClaimDecisionDto,
   MissedCheckInClaimDto,
   MissedCheckInClaimQueueDto,
-  MissedCheckInClaimRejectDto,
   ListDto,
   pageResult,
 } from '../../../../libs/contracts/src/dto.js';
@@ -24,6 +23,7 @@ const claimInclude = {
   },
   reviewer: { select: { id: true, email: true } },
   attendance: true,
+  evidence: true,
 } as const;
 
 const publicClaim = (row: any) => {
@@ -43,6 +43,9 @@ const publicClaim = (row: any) => {
     reviewer: row.reviewer,
     reviewNote: row.reviewNote,
     attendance: row.attendance,
+    evidence: row.evidence
+      ? { mimeType: row.evidence.mimeType, size: row.evidence.size, recordedAt: row.evidence.recordedAt }
+      : null,
   };
 };
 
@@ -68,7 +71,10 @@ function claimWindowDays() {
 
 @Injectable()
 export class MissedCheckInClaimsService {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly storage: PhotoStorage,
+  ) {}
 
   private get db() {
     return this.database.client;
@@ -89,6 +95,7 @@ export class MissedCheckInClaimsService {
 
   async create(principal: Principal, dto: MissedCheckInClaimDto) {
     const employee = this.employee(principal);
+    await this.storage.verifyClaimEvidence(dto.evidence);
     if (!dto.truthConfirmed)
       fail(400, 'TRUTH_CONFIRMATION_REQUIRED', 'Confirm that the claim matches the WFH work you performed.');
     if (dto.reason.trim().length < 20)
@@ -115,10 +122,11 @@ export class MissedCheckInClaimsService {
         existing.workDate !== dto.workDate ||
         existing.claimedCheckInTime !== dto.claimedCheckInTime ||
         existing.claimedCheckOutTime !== dto.claimedCheckOutTime ||
-        existing.reason !== dto.reason.trim()
+        existing.reason !== dto.reason.trim() ||
+        existing.evidence?.sha256 !== dto.evidence.fingerprint
       )
         fail(409, 'IDEMPOTENCY_CONFLICT', 'Key was used with different claim data.');
-      return publicClaim(existing);
+      return { claim: publicClaim(existing), replayed: true };
     }
 
     if (
@@ -144,6 +152,14 @@ export class MissedCheckInClaimsService {
           truthConfirmed: true,
           idempotencyKey: dto.key,
           pendingKey: `${employee.id}:${dto.workDate}`,
+          evidence: {
+            create: {
+              storageKey: dto.evidence.storageKey,
+              mimeType: dto.evidence.mimeType,
+              size: dto.evidence.size,
+              sha256: dto.evidence.fingerprint,
+            },
+          },
         },
         include: claimInclude,
       })
@@ -161,7 +177,30 @@ export class MissedCheckInClaimsService {
         changes: { claimId: row.id, workDate: dto.workDate, status: 'PENDING' },
       },
     });
-    return publicClaim(row);
+    return { claim: publicClaim(row), replayed: false };
+  }
+
+  async evidence(principal: Principal, id: string) {
+    const claim = await this.db.missedCheckInClaim.findUnique({
+      where: { id },
+      include: { employee: { select: { userId: true, department: true } }, evidence: true },
+    });
+    if (!claim) fail(404, 'CLAIM_NOT_FOUND', 'Missed check-in claim not found.');
+    if (principal.role === 'EMPLOYEE') {
+      const employee = this.employee(principal);
+      if (claim.employeeId !== employee.id)
+        fail(403, 'FORBIDDEN', 'You may only access your own claim evidence.');
+    } else {
+      const departments = this.reviewerDepartments(principal);
+      if (principal.userId === claim.employee.userId || !departments.includes(claim.employee.department))
+        fail(403, 'REVIEW_SCOPE_FORBIDDEN', 'Reviewer grant does not cover this claim.');
+    }
+    if (!claim.evidence) fail(404, 'CLAIM_EVIDENCE_NOT_FOUND', 'Claim evidence is not available.');
+    return {
+      storageKey: claim.evidence.storageKey,
+      mimeType: claim.evidence.mimeType,
+      size: claim.evidence.size,
+    };
   }
 
   async mine(principal: Principal, query: ListDto) {

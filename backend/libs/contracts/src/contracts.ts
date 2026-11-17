@@ -44,6 +44,7 @@ export const patterns = {
   health: 'health',
   missedCheckInCreate: 'missedCheckIn.create',
   missedCheckInMine: 'missedCheckIn.mine',
+  missedCheckInEvidence: 'missedCheckIn.evidence',
   missedCheckInPending: 'missedCheckIn.pending',
   missedCheckInApprove: 'missedCheckIn.approve',
   missedCheckInReject: 'missedCheckIn.reject',
