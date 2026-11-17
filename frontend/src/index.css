@@ -1038,7 +1038,7 @@
     }
     .sidebar nav,
     .sidebar-collapsed nav {
-      @apply flex w-full min-w-0 items-stretch justify-around gap-[1vw] overflow-visible;
+      @apply relative flex w-full min-w-0 items-stretch justify-around gap-[1vw] overflow-visible;
     }
     .sidebar nav > button,
     .sidebar nav > .sidebar-nav-group {
@@ -1078,6 +1078,15 @@
     }
     .sidebar nav .sidebar-submenu-dot {
       @apply text-dexa-red;
+    }
+    .sidebar .nav-symbol {
+      @apply text-dexa-red;
+    }
+    .sidebar-nav-group {
+      position: static;
+    }
+    .sidebar nav .sidebar-submenu button > span:last-child {
+      @apply flex-1 text-left;
     }
     .sidebar nav button:hover {
       @apply bg-dexa-bg text-dexa-red;

@@ -2,6 +2,8 @@
 
 DexaWork is a web application for employee WFH check-in/check-out, private evidence review, HRD employee administration, and department-scoped missed-check-in claims. This repository contains a React TypeScript frontend and a NestJS TypeScript backend with MySQL/TiDB.
 
+**POC Demo:** [Open DexaWork](https://dexa-group-technical-test-frontend.vercel.app/)
+
 The documentation distinguishes the **current implementation** from the initial PRD and architecture blueprint. Those original files remain for historical requirement traceability; the as-built documents linked below describe what the code currently does.
 
 ## Product flows

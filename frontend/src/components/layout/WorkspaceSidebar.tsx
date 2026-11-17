@@ -35,7 +35,7 @@ export function WorkspaceSidebar({
     view === "claim-review";
   const [attendanceOpen, setAttendanceOpen] = useState(monitoringActive);
   useEffect(() => {
-    if (monitoringActive) setAttendanceOpen(true);
+    setAttendanceOpen(monitoringActive);
   }, [monitoringActive]);
   return (
     <aside className={`sidebar ${collapsed ? "sidebar-collapsed" : ""}`}>
@@ -60,7 +60,10 @@ export function WorkspaceSidebar({
       <nav aria-label="Navigasi utama">
         <button
           aria-current={view === "dashboard" ? "page" : undefined}
-          onClick={() => onViewChange("dashboard")}
+          onClick={() => {
+            setAttendanceOpen(false);
+            onViewChange("dashboard");
+          }}
         >
           <img src={dashboardIcon} alt="" /> <span>Dashboard</span>
         </button>
@@ -68,6 +71,7 @@ export function WorkspaceSidebar({
           <button
             aria-current={view === "employees" ? "page" : undefined}
             onClick={() => {
+              setAttendanceOpen(false);
               onViewChange("employees");
             }}
           >
