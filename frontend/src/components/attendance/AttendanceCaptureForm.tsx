@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../ui/Button";
 
 export type WorkProofType = "SCREEN" | "WORKSPACE";
 export interface AttendanceCaptureBundle {
@@ -171,12 +172,13 @@ export function AttendanceCaptureForm({
         if (workProof && selfie) onSubmit({ workProof, selfie, workProofType });
       }}
     >
-      <fieldset className="grid gap-[0.8vw] rounded-2xl border border-slate-200 p-[1.2vw]">
-        <legend className="px-2 font-semibold">Bukti area kerja</legend>
-        <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2">
+      <fieldset className="grid gap-[1vw] rounded-2xl border border-[#A52823]/40 bg-[#FFF9F8] p-[1.2vw] shadow-sm max-sm:gap-[3vw] max-sm:p-[4vw]">
+        <legend className="px-2 font-semibold text-[#A52823]">Bukti area kerja</legend>
+        <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-[#A52823]/25 bg-white max-sm:grid-cols-1">
+          <label className={`flex min-h-[5.5vw] cursor-pointer flex-col items-center justify-center gap-[0.55vw] px-[1vw] py-[0.8vw] text-center font-semibold text-slate-800 transition-colors max-sm:min-h-[18vw] max-sm:gap-[2vw] max-sm:px-[3vw] max-sm:py-[3vw] ${workProofType === "WORKSPACE" ? "bg-[#FBEDEC]" : "hover:bg-[#FFF8F7]"}`}>
             <input
               type="radio"
+              className="h-[1vw] w-[1vw] accent-[#A52823] max-sm:h-[4vw] max-sm:w-[4vw]"
               checked={workProofType === "WORKSPACE"}
               disabled={busy || loading || !!target}
               onChange={() => {
@@ -185,11 +187,12 @@ export function AttendanceCaptureForm({
                 keyRef.current = crypto.randomUUID();
               }}
             />
-            Foto setup kerja langsung
+            <span>Foto setup kerja langsung</span>
           </label>
-          <label className="flex items-center gap-2">
+          <label className={`flex min-h-[5.5vw] cursor-pointer flex-col items-center justify-center gap-[0.55vw] border-l border-[#A52823]/20 px-[1vw] py-[0.8vw] text-center font-semibold text-slate-800 transition-colors max-sm:min-h-[18vw] max-sm:gap-[2vw] max-sm:border-l-0 max-sm:border-t max-sm:px-[3vw] max-sm:py-[3vw] ${workProofType === "SCREEN" ? "bg-[#FBEDEC]" : "hover:bg-[#FFF8F7]"}`}>
             <input
               type="radio"
+              className="h-[1vw] w-[1vw] accent-[#A52823] max-sm:h-[4vw] max-sm:w-[4vw]"
               checked={workProofType === "SCREEN"}
               disabled={
                 busy ||
@@ -203,7 +206,7 @@ export function AttendanceCaptureForm({
                 keyRef.current = crypto.randomUUID();
               }}
             />
-            Capture layar laptop
+            <span>Capture layar laptop</span>
           </label>
         </div>
         <p className="text-sm text-slate-600">
@@ -220,13 +223,14 @@ export function AttendanceCaptureForm({
               className="max-h-[32vw] w-full rounded-xl bg-slate-950 object-contain"
             />
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
-                className="primary"
+                variant="primary"
+                size="md"
                 onClick={() => void captureFrame()}
               >
                 Ambil bukti kerja
-              </button>
+              </Button>
               <button type="button" onClick={stopStream}>
                 Batal capture
               </button>
@@ -239,27 +243,31 @@ export function AttendanceCaptureForm({
               alt="Bukti area kerja yang telah dicapture"
               className="max-h-[28vw] rounded-xl object-contain"
             />
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               disabled={busy || loading}
               onClick={() => void startCapture("workProof")}
             >
               Ambil ulang bukti kerja
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             disabled={busy || loading || !!target}
             onClick={() => void startCapture("workProof")}
           >
             Mulai capture bukti kerja
-          </button>
+          </Button>
         )}
       </fieldset>
 
-      <fieldset className="grid gap-[0.8vw] rounded-2xl border border-slate-200 p-[1.2vw]">
-        <legend className="px-2 font-semibold">Selfie karyawan</legend>
+      <fieldset className="grid gap-[1vw] rounded-2xl border border-[#A52823]/40 bg-[#FFF9F8] p-[1.2vw] shadow-sm max-sm:gap-[3vw] max-sm:p-[4vw]">
+        <legend className="px-2 font-semibold text-[#A52823]">Selfie karyawan</legend>
         <p className="text-sm text-slate-600">
           Gunakan kamera depan. Foto hanya menjadi bukti visual untuk ditinjau
           HRD, bukan verifikasi identitas otomatis.
@@ -293,22 +301,26 @@ export function AttendanceCaptureForm({
               alt="Selfie yang telah dicapture"
               className="max-h-[28vw] rounded-xl object-contain"
             />
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               disabled={busy || loading}
               onClick={() => void startCapture("selfie")}
             >
               Ambil ulang selfie
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             disabled={busy || loading || !!target}
             onClick={() => void startCapture("selfie")}
           >
             Buka kamera depan
-          </button>
+          </Button>
         )}
       </fieldset>
 
