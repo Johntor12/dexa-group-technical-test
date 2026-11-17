@@ -9,7 +9,10 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { ActivateAccountDto, LoginDto } from '../../../../libs/contracts/src/dto.js';
+import {
+  ActivateAccountDto,
+  LoginDto,
+} from '../../../../libs/contracts/src/dto.js';
 import { RpcClients } from '../../../../libs/common/src/rpc.js';
 import { fail } from '../../../../libs/common/src/errors.js';
 import { AuthGuard } from '../common/security.js';
@@ -44,8 +47,17 @@ export class AuthController {
       );
     return this.auth.login(dto, req.requestId);
   }
-  @Post('activate') @HttpCode(200) activate(@Body() dto: ActivateAccountDto, @Req() req: ApiRequest) {
-    return this.rpc.call('employee', 'auth.activate', dto, undefined, req.requestId);
+  @Post('activate') @HttpCode(200) activate(
+    @Body() dto: ActivateAccountDto,
+    @Req() req: ApiRequest,
+  ) {
+    return this.rpc.call(
+      'employee',
+      'auth.activate',
+      dto,
+      undefined,
+      req.requestId,
+    );
   }
   @Get('me') @ApiBearerAuth() @UseGuards(AuthGuard) me(@Req() req: ApiRequest) {
     return req.principal;
