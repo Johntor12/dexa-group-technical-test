@@ -35,7 +35,6 @@ const publicClaim = (row: any) => {
     workDate: row.workDate,
     claimedCheckInTime: row.claimedCheckInTime,
     claimedCheckOutTime: row.claimedCheckOutTime,
-    taskDescription: row.taskDescription,
     reason: row.reason,
     truthConfirmed: row.truthConfirmed,
     status: row.status,

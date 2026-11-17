@@ -119,8 +119,6 @@ model Attendance {
     latitude            Float?
     longitude           Float?
     locationAccuracy    Float?
-    taskDescription     String?                      @db.VarChar(500)
-    wfhReason           String?                      @db.VarChar(500)
     checkInPhotoCapturedAt String?                    @db.VarChar(19)
     checkInPhotoOffset  String?                       @db.VarChar(6)
     checkOutDueAt       DateTime?                     @db.DateTime(3)
@@ -156,7 +154,6 @@ model MissedCheckInClaim {
     workDate              String         @db.Char(10)
     claimedCheckInTime    String         @db.VarChar(5)
     claimedCheckOutTime   String         @db.VarChar(5)
-    taskDescription       String?        @db.VarChar(500)
     reason                String         @db.Text
     truthConfirmed        Boolean        @default(false)
     status                MissedCheckInClaimStatus @default(PENDING)

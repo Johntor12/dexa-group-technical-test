@@ -7,9 +7,10 @@ ALTER TABLE `Attendance`
 CREATE UNIQUE INDEX `Attendance_checkOutIdempotencyKey_key`
     ON `Attendance`(`checkOutIdempotencyKey`);
 
+-- TiDB requires the foreign key and supporting index to be dropped separately.
+ALTER TABLE `Evidence` DROP FOREIGN KEY `Evidence_attendanceId_fkey`;
+ALTER TABLE `Evidence` DROP INDEX `Evidence_attendanceId_key`;
 ALTER TABLE `Evidence`
-    DROP FOREIGN KEY `Evidence_attendanceId_fkey`,
-    DROP INDEX `Evidence_attendanceId_key`,
     ADD COLUMN `kind` ENUM(
         'CHECKIN_WORK_PROOF',
         'CHECKIN_SELFIE',

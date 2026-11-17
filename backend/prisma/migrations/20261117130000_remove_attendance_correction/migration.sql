@@ -2,10 +2,10 @@
 -- Rows created by the old correction workflow remain attendance records with a neutral source.
 UPDATE `Attendance` SET `source` = 'DIRECT' WHERE `source` = 'CORRECTION';
 
-ALTER TABLE `Attendance`
-  DROP FOREIGN KEY `Attendance_correctionRequestId_fkey`,
-  DROP INDEX `Attendance_correctionRequestId_key`,
-  DROP COLUMN `correctionRequestId`;
+-- TiDB requires the foreign key and its backing unique index to be dropped separately.
+ALTER TABLE `Attendance` DROP FOREIGN KEY `Attendance_correctionRequestId_fkey`;
+ALTER TABLE `Attendance` DROP INDEX `Attendance_correctionRequestId_key`;
+ALTER TABLE `Attendance` DROP COLUMN `correctionRequestId`;
 
 DROP TABLE `AttendanceCorrectionEvidence`;
 DROP TABLE `CorrectionEligibleDay`;
@@ -19,8 +19,8 @@ ALTER TABLE `MissedCheckInReviewGrant`
   ALTER COLUMN `permission` SET DEFAULT 'MISSED_CHECK_IN_CLAIM_REVIEW';
 ALTER TABLE `MissedCheckInReviewGrant`
   RENAME INDEX `CorrectionReviewGrant_userId_department_permission_key` TO `MissedCheckInReviewGrant_userId_department_permission_key`;
+ALTER TABLE `MissedCheckInReviewGrant` DROP FOREIGN KEY `CorrectionReviewGrant_userId_fkey`;
 ALTER TABLE `MissedCheckInReviewGrant`
-  DROP FOREIGN KEY `CorrectionReviewGrant_userId_fkey`,
   ADD CONSTRAINT `MissedCheckInReviewGrant_userId_fkey`
     FOREIGN KEY (`userId`) REFERENCES `User` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 

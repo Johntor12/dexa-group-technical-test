@@ -85,7 +85,7 @@ try {
  const record=simultaneous[0].data;
  assert.equal(record.department,input.department);
  assert.ok(Math.abs(Date.now()-Date.parse(record.submittedAt))<30000);
- assert.equal(record.latitude,null);assert.equal(record.longitude,null);assert.equal(record.locationAccuracy,null);assert.equal(record.taskDescription,null);assert.equal(record.wfhReason,null);
+assert.equal(record.latitude,null);assert.equal(record.longitude,null);assert.equal(record.locationAccuracy,null);assert.equal(Object.hasOwn(record,'taskDescription'),false);assert.equal(Object.hasOwn(record,'wfhReason'),false);
  assert.equal(await db.evidence.count({where:{attendanceId:record.id}}),2);
  const replay=status(await api('/attendances',{method:'POST',token,body:upload(),headers:{'Idempotency-Key':key}}),200);assert.equal(replay.id,record.id);
  status(await api('/attendances',{method:'POST',token,body:upload(Buffer.concat([photo,Buffer.from('different')])),headers:{'Idempotency-Key':key}}),409);
