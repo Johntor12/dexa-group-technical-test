@@ -2,20 +2,20 @@ import 'dotenv/config';
 import { hash } from 'bcryptjs';
 import { createDatabase } from '../libs/common/src/database.js';
 import { required } from '../libs/common/src/config.js';
-import { workDate } from '../libs/common/src/time.js';
+import { departmentNumber } from '../libs/contracts/src/department.js';
 
 const db = createDatabase();
 const employeeSeeds = [
-  { email: 'employee.sales01@pharmawork.test', employeeNumber: 'PW-SLS-001', fullName: 'Raka Pratama', department: 'SALES', position: 'Sales Executive' },
-  { email: 'employee.marketing01@pharmawork.test', employeeNumber: 'PW-MKT-001', fullName: 'Nadia Putri', department: 'MARKETING', position: 'Marketing Specialist' },
-  { email: 'employee.production01@pharmawork.test', employeeNumber: 'PW-PRD-001', fullName: 'Dimas Saputra', department: 'PRODUCTION', position: 'Production Operator' },
-  { email: 'employee.finance01@pharmawork.test', employeeNumber: 'PW-FIN-001', fullName: 'Intan Permata', department: 'FINANCE', position: 'Finance Analyst' },
-  { email: 'employee.hr01@pharmawork.test', employeeNumber: 'PW-HR-001', fullName: 'Citra Ayuningtyas', department: 'HR', position: 'HR Officer' },
-  { email: required('SEED_EMPLOYEE_EMAIL'), employeeNumber: 'PW-IT-001', fullName: 'Bima Aditya', department: 'IT', position: 'Software Engineer' },
-  { email: 'employee.rnd01@pharmawork.test', employeeNumber: 'PW-RND-001', fullName: 'Salsabila Rahma', department: 'R_AND_D', position: 'Research Associate' },
-  { email: 'employee.logistic01@pharmawork.test', employeeNumber: 'PW-LOG-001', fullName: 'Fajar Hidayat', department: 'LOGISTIC', position: 'Logistics Coordinator' },
-  { email: 'employee.admin.secretary01@pharmawork.test', employeeNumber: 'PW-ADM-001', fullName: 'Maya Lestari', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Administrative Secretary' },
-  { email: 'employee.design01@pharmawork.test', employeeNumber: 'PW-DES-001', fullName: 'Rangga Mahendra', department: 'DESIGN_DEPARTMENT', position: 'Graphic Designer' },
+  { email: 'employee.sales01@pharmawork.test', fullName: 'Raka Pratama', department: 'SALES', position: 'Sales Executive' },
+  { email: 'employee.marketing01@pharmawork.test', fullName: 'Nadia Putri', department: 'MARKETING', position: 'Marketing Specialist' },
+  { email: 'employee.production01@pharmawork.test', fullName: 'Dimas Saputra', department: 'PRODUCTION', position: 'Production Operator' },
+  { email: 'employee.finance01@pharmawork.test', fullName: 'Intan Permata', department: 'FINANCE', position: 'Finance Analyst' },
+  { email: 'employee.hr01@pharmawork.test', fullName: 'Citra Ayuningtyas', department: 'HR', position: 'HR Officer' },
+  { email: required('SEED_EMPLOYEE_EMAIL'), fullName: 'Bima Aditya', department: 'IT', position: 'Software Engineer' },
+  { email: 'employee.rnd01@pharmawork.test', fullName: 'Salsabila Rahma', department: 'R_AND_D', position: 'Research Associate' },
+  { email: 'employee.logistic01@pharmawork.test', fullName: 'Fajar Hidayat', department: 'LOGISTIC', position: 'Logistics Coordinator' },
+  { email: 'employee.admin.secretary01@pharmawork.test', fullName: 'Maya Lestari', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Administrative Secretary' },
+  { email: 'employee.design01@pharmawork.test', fullName: 'Rangga Mahendra', department: 'DESIGN_DEPARTMENT', position: 'Graphic Designer' },
 ] as const;
 
 async function moveLegacySeedAccount(oldEmail: string, newEmail: string) {
@@ -48,65 +48,97 @@ try {
 
   await db.user.upsert({
     where: { email: hrdEmail },
-    update: { role: 'HRD', active: true },
+    update: { role: 'HRD', active: true, passwordHash },
     create: { email: hrdEmail, passwordHash, role: 'HRD' },
   });
 
-  let seededItEmployeeId = '';
   for (const employee of employeeSeeds) {
-    const user = await db.user.upsert({
+    const existing = await db.user.findUnique({
       where: { email: employee.email },
-      update: {
-        role: 'EMPLOYEE',
-        active: true,
-        employee: {
-          upsert: {
-            create: { employeeNumber: employee.employeeNumber, fullName: employee.fullName, position: employee.position, department: employee.department },
-            update: { employeeNumber: employee.employeeNumber, fullName: employee.fullName, position: employee.position, department: employee.department, active: true },
-          },
-        },
-      },
-      create: {
-        email: employee.email,
-        passwordHash,
-        role: 'EMPLOYEE',
-        employee: {
-          create: { employeeNumber: employee.employeeNumber, fullName: employee.fullName, position: employee.position, department: employee.department },
-        },
-      },
       include: { employee: true },
     });
-    if (employee.department === 'IT') seededItEmployeeId = user.employee!.id;
+    let user;
+    if (existing?.employee) {
+      user = await db.user.update({
+        where: { id: existing.id },
+        data: {
+          role: 'EMPLOYEE',
+          active: true,
+          passwordHash,
+          employee: {
+            update: {
+              fullName: employee.fullName,
+              position: employee.position,
+              department: employee.department,
+              active: true,
+            },
+          },
+        },
+        include: { employee: true },
+      });
+    } else {
+      user = await db.$transaction(async (tx) => {
+        const sequence = await tx.employeeNumberSequence.create({ data: {} });
+        const year = new Intl.DateTimeFormat('en', {
+          timeZone: 'Asia/Jakarta',
+          year: 'numeric',
+        }).format(new Date());
+        if (sequence.id > 9999) {
+          throw new Error('The four-digit company-wide employee number sequence is exhausted.');
+        }
+        const employeeNumber = `DEXA-${year}-${departmentNumber[employee.department]}-${String(sequence.id).padStart(4, '0')}`;
+        const employeeData = {
+          employeeNumber,
+          fullName: employee.fullName,
+          position: employee.position,
+          department: employee.department,
+        };
+        if (existing) {
+          return tx.user.update({
+            where: { id: existing.id },
+            data: {
+              role: 'EMPLOYEE',
+              active: true,
+              passwordHash,
+              employee: { create: employeeData },
+            },
+            include: { employee: true },
+          });
+        }
+        return tx.user.create({
+          data: {
+            email: employee.email,
+            passwordHash,
+            role: 'EMPLOYEE',
+            employee: { create: employeeData },
+          },
+          include: { employee: true },
+        });
+      });
+    }
   }
 
   const reviewer = await db.user.upsert({
     where: { email: reviewerEmail },
-    update: { role: 'HRD', active: true },
+    update: { role: 'HRD', active: true, passwordHash },
     create: { email: reviewerEmail, passwordHash, role: 'HRD' },
   });
-  await db.correctionReviewGrant.deleteMany({
-    where: { userId: reviewer.id, permission: 'ATTENDANCE_CORRECTION_REVIEW', department: { not: 'IT' } },
+  await db.missedCheckInReviewGrant.deleteMany({
+    where: { userId: reviewer.id, permission: 'MISSED_CHECK_IN_CLAIM_REVIEW', department: { not: 'IT' } },
   });
-  await db.correctionReviewGrant.upsert({
+  await db.missedCheckInReviewGrant.upsert({
     where: {
       userId_department_permission: {
         userId: reviewer.id,
         department: 'IT',
-        permission: 'ATTENDANCE_CORRECTION_REVIEW',
+        permission: 'MISSED_CHECK_IN_CLAIM_REVIEW',
       },
     },
     update: {},
     create: { userId: reviewer.id, department: 'IT' },
   });
 
-  const date = workDate(new Date(Date.now() - 2 * 86400000));
-  await db.correctionEligibleDay.upsert({
-    where: { employeeId_workDate: { employeeId: seededItEmployeeId, workDate: date } },
-    update: {},
-    create: { employeeId: seededItEmployeeId, workDate: date, note: 'Synthetic demo WFH eligibility' },
-  });
-
-  console.log(`Seeded 1 HRD administrator, 1 IT reviewer, and ${employeeSeeds.length} employee accounts with synthetic names.`);
+  console.log(`Seeded 1 HRD administrator, 1 IT claim reviewer, and ${employeeSeeds.length} employee accounts with synthetic names.`);
 } finally {
   await db.$disconnect();
 }

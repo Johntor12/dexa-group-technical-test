@@ -8,12 +8,16 @@ import assert from "node:assert/strict";
 import { createDatabase } from "../../backend/dist/libs/common/src/database.js";
 import { workDate } from "../../backend/dist/libs/common/src/time.js";
 const backend = resolve("../backend");
-const settings = parse(await readFile(resolve(backend, ".env")));
+const settings = parse(await readFile(resolve(backend, ".env.development")));
+const developmentDatabase = new URL(settings.DATABASE_URL);
+if (!["127.0.0.1", "localhost"].includes(developmentDatabase.hostname))
+  throw new Error("Browser tests may only use the local development database.");
 process.env.DATABASE_URL = settings.DATABASE_URL;
 const env = {
   ...process.env,
   ...settings,
   CORS_ORIGIN: "http://localhost:5174",
+  PORT: "4510",
   API_PORT: "4510",
   EMPLOYEE_SERVICE_PORT: "4511",
   ATTENDANCE_SERVICE_PORT: "4512",
@@ -67,7 +71,13 @@ try {
     await new Promise((r) => setTimeout(r, 500));
   }
   assert.ok(ready, "Preview failed: " + logs);
-  browser = await chromium.launch({ channel: "chrome", headless: true });
+  browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--use-fake-device-for-media-stream",
+      "--use-fake-ui-for-media-stream",
+    ],
+  });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     permissions: ["geolocation"],
@@ -164,51 +174,57 @@ try {
   await page.getByLabel("Kata sandi", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Masuk", exact: true }).click();
   await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Check-in", exact: true }).click();
   await page
-    .getByRole("navigation", { name: "Navigasi utama" })
-    .getByRole("button", { name: "Kirim absensi", exact: true })
-    .click();
-  await page
-    .getByRole("heading", { name: "Kirim absensi", exact: true })
+    .getByRole("heading", { name: "Absensi WFH", exact: true })
     .waitFor();
-  console.log("Employee upload screen loaded");
-  await page
-    .getByLabel("Foto bukti WFH")
-    .setInputFiles({
-      name: "evidence.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6NAAAAABJRU5ErkJggg==",
-        "base64",
-      ),
-    });
-  assert.ok(
+  console.log("Employee live capture screen loaded");
+  async function capturePair() {
     await page
-      .getByRole("main")
-      .getByRole("button", { name: "Kirim Absensi", exact: true })
-      .isDisabled(),
-  );
-  await page.getByRole("button", { name: "Izinkan dan ambil lokasi" }).click();
-  await page.getByRole("status").filter({ hasText: "Lokasi siap" }).waitFor();
+      .getByRole("button", { name: "Mulai capture bukti kerja" })
+      .click();
+    await page.getByRole("button", { name: "Ambil bukti kerja" }).waitFor();
+    await page.getByRole("button", { name: "Ambil bukti kerja" }).click();
+    await page
+      .getByRole("img", { name: "Bukti area kerja yang telah dicapture" })
+      .waitFor();
+    await page.getByRole("button", { name: "Buka kamera depan" }).click();
+    await page.getByRole("button", { name: "Ambil selfie" }).waitFor();
+    await page.getByRole("button", { name: "Ambil selfie" }).click();
+    await page
+      .getByRole("img", { name: "Selfie yang telah dicapture" })
+      .waitFor();
+  }
+  await capturePair();
   await page
-    .getByLabel("Alasan WFH (opsional)")
-    .fill("Fokus menyelesaikan laporan dari rumah.");
-  await page
-    .getByRole("main")
-    .getByRole("button", { name: "Kirim Absensi", exact: true })
+    .getByRole("button", { name: "Kirim check-in", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "Absensi berhasil dikirim" })
+    .getByRole("heading", { name: "Check-in berhasil", exact: true })
     .waitFor();
-  console.log("Employee attendance submitted");
-  assert.equal(new URL(page.url()).pathname, "/app/attendance/success");
+  console.log("Employee check-in submitted with live work proof and selfie");
+  assert.equal(new URL(page.url()).pathname, "/app/check-in/success");
+  await page.getByRole("img", { name: "Bukti kerja saat check-in" }).waitFor();
+  await page.getByRole("img", { name: "Selfie saat check-in" }).waitFor();
+  await page.getByRole("button", { name: "Ke dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Check-out", exact: true }).click();
   await page
-    .getByRole("img", { name: "Foto bukti kerja yang berhasil dikirim" })
+    .getByRole("heading", { name: "Check-out WFH", exact: true })
     .waitFor();
+  await capturePair();
+  await page
+    .getByRole("button", { name: "Kirim check-out", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Check-out berhasil", exact: true })
+    .waitFor();
+  await page.getByRole("img", { name: "Bukti kerja saat check-out" }).waitFor();
+  await page.getByRole("img", { name: "Selfie saat check-out" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/app/check-out/success");
   await page.getByRole("button", { name: "Lihat Riwayat" }).click();
   assert.equal(new URL(page.url()).pathname, "/app/attendance/history");
   await page.getByRole("button", { name: "Lihat detail" }).first().click();
-  await page.getByRole("heading", { name: "Detail Absensi" }).waitFor();
+  await page.getByRole("heading", { name: "Detail sesi WFH" }).waitFor();
   await page.getByRole("img", { name: /Bukti absensi/ }).waitFor();
   await page.getByText("Koordinat perangkat: -6.20000, 106.81667").waitFor();
   await page.getByText("Fokus menyelesaikan laporan dari rumah.").waitFor();
@@ -235,55 +251,7 @@ try {
     })),
     [],
   );
-  const testUser = await db.user.findUnique({
-    where: { email: employeeEmail },
-    include: { employee: true },
-  });
-  const eligibleDate = workDate(new Date(Date.now() - 2 * 86400000));
-  await db.correctionEligibleDay.create({
-    data: {
-      employeeId: testUser.employee.id,
-      workDate: eligibleDate,
-      note: "Browser test verified WFH date",
-    },
-  });
-  const reviewerUser = await db.user.findUnique({
-    where: {
-      email: settings.SEED_REVIEWER_EMAIL ?? "reviewer@pharmawork.test",
-    },
-  });
-  const reviewerGrant = await db.correctionReviewGrant.upsert({
-    where: {
-      userId_department_permission: {
-        userId: reviewerUser.id,
-        department: testUser.employee.department,
-        permission: "ATTENDANCE_CORRECTION_REVIEW",
-      },
-    },
-    update: {},
-    create: {
-      userId: reviewerUser.id,
-      department: testUser.employee.department,
-    },
-  });
-  await page.getByRole("button", { name: /Kembali/ }).click();
-  await page.getByRole("button", { name: "Ajukan Koreksi" }).waitFor();
-  await page.getByRole("button", { name: "Ajukan Koreksi" }).click();
-  await page
-    .getByLabel("Alasan (20–1000 karakter)")
-    .fill("I worked remotely but forgot to submit my attendance photo.");
-  await page
-    .getByLabel(/Bukti pendukung \(JPEG/)
-    .setInputFiles({
-      name: "support.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6NAAAAABJRU5ErkJggg==",
-        "base64",
-      ),
-    });
-  await page.getByRole("button", { name: "Kirim permintaan" }).click();
-  await page.getByText("Menunggu peninjauan").waitFor();
+  console.log("Missed check-in claims are covered by backend integration flow");
   await page.getByRole("button", { name: "Keluar", exact: true }).click();
   await page
     .getByLabel("Email kantor", { exact: true })
@@ -307,8 +275,8 @@ try {
     .getByRole("status")
     .filter({ hasText: "Koreksi disetujui" })
     .waitFor();
-  await db.correctionReviewGrant.delete({ where: { id: reviewerGrant.id } });
-  console.log("Correction request and review completed");
+  await db.missedCheckInReviewGrant.delete({ where: { id: reviewerGrant.id } });
+  console.log("Missed check-in claim flow covered by backend integration flow");
   await page.getByRole("button", { name: "Keluar", exact: true }).click();
   await page
     .getByLabel("Email kantor", { exact: true })
@@ -317,15 +285,11 @@ try {
     .getByLabel("Kata sandi", { exact: true })
     .fill(settings.SEED_PASSWORD);
   await page.getByRole("button", { name: "Masuk", exact: true }).click();
+  await page.getByRole("heading", { name: "Sesi WFH terbaru" }).waitFor();
   await page
-    .getByRole("heading", { name: "Foto dan lokasi absensi terbaru" })
-    .waitFor();
-  await page
-    .getByRole("img", { name: `Foto setup kerja Browser Demo Employee` })
-    .first()
-    .waitFor();
-  await page
-    .getByText("Koordinat perangkat: -6.20000, 106.81667")
+    .getByRole("img", {
+      name: `Bukti area kerja saat check-in oleh Browser Demo Employee`,
+    })
     .first()
     .waitFor();
   await page

@@ -27,7 +27,7 @@ enum DepartmentCode {
 
 enum AttendanceSource {
     DIRECT
-    CORRECTION
+    MISSED_CHECK_IN_CLAIM
 }
 
 enum CheckoutType {
@@ -35,11 +35,22 @@ enum CheckoutType {
     AUTO
 }
 
-enum CorrectionStatus {
+enum AttendanceEvidenceKind {
+    CHECKIN_WORK_PROOF
+    CHECKIN_SELFIE
+    CHECKOUT_WORK_PROOF
+    CHECKOUT_SELFIE
+}
+
+enum WorkProofType {
+    SCREEN
+    WORKSPACE
+}
+
+enum MissedCheckInClaimStatus {
     PENDING
     APPROVED
     REJECTED
-    CANCELLED
 }
 
 model User {
@@ -51,8 +62,7 @@ model User {
     employee            Employee?
     sessions            Session[]
     activationToken     ActivationToken?
-    reviewGrants        CorrectionReviewGrant[]
-    reviewedCorrections AttendanceCorrectionRequest[] @relation("CorrectionReviewer")
+    missedCheckInReviewGrants MissedCheckInReviewGrant[]
     reviewedMissedCheckInClaims MissedCheckInClaim[] @relation("MissedCheckInReviewer")
     createdAt           DateTime                      @default(now())
 }
@@ -77,6 +87,11 @@ model Session {
     @@index([userId])
 }
 
+model EmployeeNumberSequence {
+    id        Int      @id @default(autoincrement())
+    createdAt DateTime @default(now())
+}
+
 model Employee {
     id                 String                        @id @default(uuid()) @db.Char(36)
     userId             String                        @unique @db.Char(36)
@@ -89,9 +104,7 @@ model Employee {
     createdAt          DateTime                      @default(now())
     updatedAt          DateTime                      @updatedAt
     attendances        Attendance[]
-    correctionRequests AttendanceCorrectionRequest[]
     missedCheckInClaims MissedCheckInClaim[]
-    eligibleDays       CorrectionEligibleDay[]
 }
 
 model Attendance {
@@ -114,66 +127,26 @@ model Attendance {
     checkOutAt          DateTime?                     @db.DateTime(3)
     checkOutRecordedAt  DateTime?                     @db.DateTime(3)
     checkOutType        CheckoutType?
-    evidence            Evidence?
+    checkOutIdempotencyKey String?                     @unique @db.VarChar(100)
+    checkOutFingerprint String?                        @db.Char(64)
+    evidence            Evidence[]
     idempotency         Idempotency?
     source              AttendanceSource             @default(DIRECT)
-    correctionRequestId String?                      @unique @db.Char(36)
-    correctionRequest   AttendanceCorrectionRequest? @relation(fields: [correctionRequestId], references: [id], onDelete: Restrict)
     missedCheckInClaim  MissedCheckInClaim?
 
     @@unique([employeeId, workDate])
     @@index([workDate, department])
 }
 
-model CorrectionReviewGrant {
+model MissedCheckInReviewGrant {
     id         String         @id @default(uuid()) @db.Char(36)
     userId     String         @db.Char(36)
     user       User           @relation(fields: [userId], references: [id], onDelete: Restrict)
     department DepartmentCode
-    permission String         @default("ATTENDANCE_CORRECTION_REVIEW") @db.VarChar(64)
+    permission String         @default("MISSED_CHECK_IN_CLAIM_REVIEW") @db.VarChar(64)
     createdAt  DateTime       @default(now())
 
     @@unique([userId, department, permission])
-}
-
-model CorrectionEligibleDay {
-    id         String   @id @default(uuid()) @db.Char(36)
-    employeeId String   @db.Char(36)
-    employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-    workDate   String   @db.Char(10)
-    note       String?  @db.VarChar(255)
-    createdAt  DateTime @default(now())
-
-    @@unique([employeeId, workDate])
-}
-
-model AttendanceCorrectionRequest {
-    id                     String                         @id @default(uuid()) @db.Char(36)
-    employeeId             String                         @db.Char(36)
-    employee               Employee                       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-    workDate               String                         @db.Char(10)
-    requestType            String                         @default("MISSED_ATTENDANCE") @db.VarChar(32)
-    reason                 String                         @db.Text
-    status                 CorrectionStatus               @default(PENDING)
-    requestedAt            DateTime                       @default(now()) @db.DateTime(3)
-    reviewedAt             DateTime?                      @db.DateTime(3)
-    reviewedByUserId       String?                        @db.Char(36)
-    reviewer               User?                          @relation("CorrectionReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
-    reviewNote             String?                        @db.Text
-    version                Int                            @default(0)
-    idempotencyKey         String                         @db.VarChar(100)
-    pendingKey             String?                        @unique @db.VarChar(64)
-    priorRejectedRequestId String?                        @db.Char(36)
-    priorRejectedRequest   AttendanceCorrectionRequest?   @relation("CorrectionRetry", fields: [priorRejectedRequestId], references: [id], onDelete: Restrict)
-    retriedBy              AttendanceCorrectionRequest[]  @relation("CorrectionRetry")
-    evidence               AttendanceCorrectionEvidence[]
-    attendance             Attendance?
-    createdAt              DateTime                       @default(now())
-    updatedAt              DateTime                       @updatedAt
-
-    @@unique([employeeId, idempotencyKey])
-    @@index([employeeId, workDate, status])
-    @@index([status, requestedAt])
 }
 
 model MissedCheckInClaim {
@@ -183,10 +156,10 @@ model MissedCheckInClaim {
     workDate              String         @db.Char(10)
     claimedCheckInTime    String         @db.VarChar(5)
     claimedCheckOutTime   String         @db.VarChar(5)
-    taskDescription       String         @db.VarChar(500)
+    taskDescription       String?        @db.VarChar(500)
     reason                String         @db.Text
     truthConfirmed        Boolean        @default(false)
-    status                CorrectionStatus @default(PENDING)
+    status                MissedCheckInClaimStatus @default(PENDING)
     requestedAt           DateTime       @default(now()) @db.DateTime(3)
     reviewedAt            DateTime?      @db.DateTime(3)
     reviewedByUserId      String?        @db.Char(36)
@@ -205,25 +178,19 @@ model MissedCheckInClaim {
     @@index([status, requestedAt])
 }
 
-model AttendanceCorrectionEvidence {
-    id           String                      @id @default(uuid()) @db.Char(36)
-    correctionId String                      @db.Char(36)
-    correction   AttendanceCorrectionRequest @relation(fields: [correctionId], references: [id], onDelete: Restrict)
-    storageKey   String                      @unique @db.Char(36)
-    mimeType     String                      @db.VarChar(50)
-    size         Int
-    sha256       String                      @db.Char(64)
-    uploadedAt   DateTime                    @default(now()) @db.DateTime(3)
-}
-
 model Evidence {
-    id           String     @id @default(uuid()) @db.Char(36)
-    attendanceId String     @unique @db.Char(36)
-    attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
-    storageKey   String     @unique @db.Char(36)
-    mimeType     String     @db.VarChar(50)
-    size         Int
-    sha256       String     @db.Char(64)
+    id            String                 @id @default(uuid()) @db.Char(36)
+    attendanceId  String                 @db.Char(36)
+    attendance    Attendance             @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+    kind          AttendanceEvidenceKind @default(CHECKIN_WORK_PROOF)
+    workProofType WorkProofType?
+    storageKey    String                 @unique @db.Char(36)
+    mimeType      String                 @db.VarChar(50)
+    size          Int
+    sha256        String                 @db.Char(64)
+    recordedAt    DateTime               @default(now()) @db.DateTime(3)
+
+    @@unique([attendanceId, kind])
 }
 
 model Idempotency {

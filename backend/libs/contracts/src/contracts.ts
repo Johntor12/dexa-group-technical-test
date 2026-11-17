@@ -4,7 +4,7 @@ export interface Principal {
   userId: string;
   role: Role;
   sessionId: string;
-  reviewDepartments?: DepartmentCode[];
+  missedCheckInReviewDepartments?: DepartmentCode[];
   employee?: {
     id: string;
     fullName: string;
@@ -39,15 +39,6 @@ export const patterns = {
   evidence: 'attendance.evidence',
   sweep: 'evidence.sweep',
   health: 'health',
-  correctionEligible: 'correction.eligible',
-  correctionCreate: 'correction.create',
-  correctionMine: 'correction.findMine',
-  correctionDetail: 'correction.findOne',
-  correctionPending: 'correction.listPending',
-  correctionApprove: 'correction.approve',
-  correctionReject: 'correction.reject',
-  correctionCancel: 'correction.cancel',
-  correctionEvidence: 'correction.evidence',
   missedCheckInCreate: 'missedCheckIn.create',
   missedCheckInMine: 'missedCheckIn.mine',
   missedCheckInPending: 'missedCheckIn.pending',

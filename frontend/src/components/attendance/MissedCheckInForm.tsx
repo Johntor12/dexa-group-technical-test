@@ -5,7 +5,6 @@ export interface MissedClaimValues {
   workDate: string;
   claimedCheckInTime: string;
   claimedCheckOutTime: string;
-  taskDescription: string;
   reason: string;
   truthConfirmed: boolean;
 }
@@ -22,7 +21,6 @@ export function MissedCheckInForm({
     workDate: "",
     claimedCheckInTime: "",
     claimedCheckOutTime: "",
-    taskDescription: "",
     reason: "",
     truthConfirmed: false,
   });
@@ -33,7 +31,7 @@ export function MissedCheckInForm({
   }).format(new Date());
   return (
     <section className="card mx-auto grid max-w-[52vw] gap-[1vw] max-lg:max-w-full">
-      <span className="eyebrow">KOREKSI KEHADIRAN</span>
+      <span className="eyebrow">KLAIM CHECK-IN</span>
       <h2>Lupa check-in?</h2>
       <p>
         Klaim hanya untuk tanggal lampau. Pengajuan akan ditinjau HRD dan belum
@@ -76,15 +74,6 @@ export function MissedCheckInForm({
             />
           </label>
         </div>
-        <label>
-          Task yang dikerjakan *
-          <textarea
-            required
-            maxLength={500}
-            value={values.taskDescription}
-            onChange={(e) => update("taskDescription", e.target.value)}
-          />
-        </label>
         <label>
           Alasan lupa check-in *
           <textarea

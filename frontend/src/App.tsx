@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import type { AttendanceCaptureBundle } from "./components/attendance/AttendanceCaptureForm";
+import type { AttendanceEvidenceImages } from "./components/attendance/SessionFlow";
 import { api, ApiError } from "./lib/api";
 import type {
   User,
@@ -15,9 +17,9 @@ import { WorkspaceSidebar } from "./components/layout/WorkspaceSidebar";
 import { EmployeeForm } from "./components/employees/EmployeeForm";
 import type { EmployeeFormValues } from "./components/employees/EmployeeForm";
 import { TodayAttendanceCard } from "./components/attendance/TodayAttendanceCard";
-import type { WfhLocation } from "./components/attendance/LocationCapture";
 import { AttendanceDetail } from "./components/attendance/AttendanceDetail";
-import { CorrectionPanel } from "./components/attendance/CorrectionPanel";
+import { AttendanceTodaySection } from "./components/attendance/AttendanceTodaySection";
+import { MissedCheckInClaimsPanel } from "./components/attendance/MissedCheckInClaimsPanel";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { RecordsSection } from "./components/records/RecordsSection";
 import { DashboardOverview } from "./components/dashboard/DashboardOverview";
@@ -28,6 +30,8 @@ import { MissedCheckInForm } from "./components/attendance/MissedCheckInForm";
 type View =
   | "dashboard"
   | "attendance"
+  | "attendance-today"
+  | "claim-review"
   | "employees"
   | "submit"
   | "success"
@@ -69,6 +73,8 @@ function pathFor(view: View, role: User["role"], id?: string) {
   if (view === "checkout-success") return "/app/check-out/success";
   if (view === "checkout-auto") return "/app/check-out/automatic";
   if (view === "missed-checkin") return "/app/check-in/missed";
+  if (view === "attendance-today") return "/hr/attendance/today";
+  if (view === "claim-review") return "/hr/attendance/claims";
   if (view === "employees") return "/hr/employees";
   if (view === "employee-form")
     return id ? `/hr/employees/${id}/edit` : "/hr/employees/new";
@@ -94,6 +100,8 @@ function routeFor(
       return { view: "detail", id: path.split("/").pop() };
     if (path === "/app/attendance/history") return { view: "attendance" };
   } else {
+    if (path === "/hr/attendance/today") return { view: "attendance-today" };
+    if (path === "/hr/attendance/claims") return { view: "claim-review" };
     if (path === "/hr/employees/new") return { view: "employee-form" };
     if (/^\/hr\/employees\/[^/]+\/edit$/.test(path))
       return { view: "employee-form", id: path.split("/")[3] };
@@ -115,6 +123,17 @@ async function allPages<T>(path: string, token: string): Promise<T[]> {
   return [first, ...rest].flatMap((result) => result.data);
 }
 
+type EvidenceKind = "CHECKIN_WORK_PROOF" | "CHECKIN_SELFIE" | "CHECKOUT_WORK_PROOF" | "CHECKOUT_SELFIE";
+async function loadEvidenceImages(id: string, token: string): Promise<AttendanceEvidenceImages> {
+  const kinds: EvidenceKind[] = ["CHECKIN_WORK_PROOF","CHECKIN_SELFIE","CHECKOUT_WORK_PROOF","CHECKOUT_SELFIE"];
+  const entries = await Promise.all(kinds.map(async (kind) => {
+    try { return [kind, await api<Blob>(`/attendances/${id}/evidence/${kind}`, token)] as const; }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return [kind, null] as const; throw error; }
+  }));
+  const images: AttendanceEvidenceImages = {};
+  for (const [kind, blob] of entries) if (blob) images[kind] = URL.createObjectURL(blob);
+  return images;
+}
 function App() {
   const [token, setToken] = useState("");
   const [user, setUser] = useState<User | null>(null);
@@ -135,6 +154,7 @@ function App() {
   const [employees, setEmployees] = useState<Page<Employee> | null>(null);
   const [attendances, setAttendances] = useState<Page<Attendance> | null>(null);
   const [todayAttendances, setTodayAttendances] = useState<Attendance[]>([]);
+  const [todayStaff, setTodayStaff] = useState<Employee[]>([]);
   const [today, setToday] = useState<Attendance | null>(null);
   const [stats, setStats] = useState<{
     total: number;
@@ -147,21 +167,11 @@ function App() {
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<string | null>(null);
   const [employeeActive, setEmployeeActive] = useState(true);
-  const [file, setFile] = useState<File | null>(null);
-  const [photoCapture, setPhotoCapture] = useState<{ capturedAt: string; offset: string | null } | null>(null);
-  const [checkingPhoto, setCheckingPhoto] = useState(false);
-  const [photoDate, setPhotoDate] = useState("");
-  const [photoTime, setPhotoTime] = useState("");
-  const [location, setLocation] = useState<WfhLocation | null>(null);
-  const [reason, setReason] = useState("");
-  const [taskDescription, setTaskDescription] = useState("");
   const key = useRef(crypto.randomUUID());
-  const photoRequestId = useRef(0);
   const [detail, setDetail] = useState<Attendance | null>(null);
-  const [image, setImage] = useState("");
-  const [pendingDeactivate, setPendingDeactivate] = useState<Employee | null>(
-    null,
-  );
+  const [images, setImages] = useState<AttendanceEvidenceImages>({});
+  const [employeeLoginActive, setEmployeeLoginActive] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [activation, setActivation] = useState<{
     token: string;
     expiresAt: string;
@@ -174,10 +184,10 @@ function App() {
       setView(next);
       setError("");
       setNotice("");
-      if (next === "attendance" || next === "employees") {
+      if (next === "attendance" || next === "attendance-today" || next === "claim-review" || next === "employees") {
         setPage(1);
         setSearch("");
-        if (next === "attendance" && role === "HRD") setDate(current => current || jakartaDate());
+        if ((next === "attendance" || next === "attendance-today") && role === "HRD") setDate(current => current || jakartaDate());
       }
     },
     [],
@@ -192,11 +202,11 @@ function App() {
       setToken("");
       setEmployees(null);
       setAttendances(null);
+      setTodayStaff([]);
+      setTodayAttendances([]);
       setToday(null);
       setDepartments([]);
-      setImage("");
-      setFile(null);
-      setLoading(false);
+      setImages({});      setLoading(false);
       window.history.replaceState({}, "", "/");
     }
   }, []);
@@ -208,14 +218,11 @@ function App() {
       if (view === "detail") {
         const id = window.location.pathname.split("/").pop();
         const record = await api<Attendance>(`/attendances/${id}`, token);
-        const blob =
-          record.source === "CORRECTION"
-            ? null
-            : await api<Blob>(`/attendances/${id}/evidence`, token);
+        const evidenceImages = record.source === "MISSED_CHECK_IN_CLAIM" ? {} : await loadEvidenceImages(record.id, token);
         if (current === generation.current) {
           setDetail(record);
-          setImage(blob ? URL.createObjectURL(blob) : "");
-        }
+          setImages(evidenceImages);
+        } else Object.values(evidenceImages).forEach((url) => URL.revokeObjectURL(url));
       } else if (
         view === "employee-form" &&
         window.location.pathname.endsWith("/edit")
@@ -224,6 +231,9 @@ function App() {
         const employee = await api<Employee>(`/employees/${id}`, token);
         if (current === generation.current) {
           setEditing(id);
+          setEditingEmployee(employee);
+          setEmployeeActive(employee.active);
+          setEmployeeLoginActive(employee.user.active);
           setForm({
             email: employee.user.email,
             fullName: employee.fullName,
@@ -233,12 +243,24 @@ function App() {
           });
         }
       } else if (view === "employees") {
-        const q = new URLSearchParams({ page: String(page), limit: "6" });
+        const q = new URLSearchParams({ page: String(page), limit: String(attendanceLimit) });
         if (search) q.set("search", search);
         if (department) q.set("department", department);
         if (employeeStatus) q.set("employeeStatus", employeeStatus);
         const result = await api<Page<Employee>>(`/employees?${q}`, token);
         if (current === generation.current) setEmployees(result);
+      } else if (view === "attendance-today" && user.role === "HRD") {
+        const todayDate = jakartaDate();
+        const [staff, records] = await Promise.all([
+          allPages<Employee>("/employees", token),
+          allPages<Attendance>(`/attendances?date=${todayDate}`, token),
+        ]);
+        const activeStaff = staff.filter((employee) => employee.active && employee.user.active);
+        const directCheckIns = records.filter((record) => record.source !== "MISSED_CHECK_IN_CLAIM");
+        if (current === generation.current) {
+          setTodayStaff(activeStaff);
+          setTodayAttendances(directCheckIns);
+        }
       } else if (view === "dashboard" || view === "attendance") {
         const q = new URLSearchParams({
           page: String(page),
@@ -285,7 +307,7 @@ function App() {
               submitted: active.filter((employee) => submitted.has(employee.id)).length,
               pending: active.filter((employee) => !submitted.has(employee.id)).length,
               completed: records.filter(record => !!record.checkOutAt).length,
-              running: records.filter(record => !record.checkOutAt && record.source !== 'CORRECTION').length,
+running: records.filter(record => !record.checkOutAt && record.source !== 'MISSED_CHECK_IN_CLAIM').length,
             });
           }
         }
@@ -303,12 +325,9 @@ function App() {
         );
         if (current === generation.current) setToday(result);
         if ((view === "success" || view === "checkout-success" || view === "checkout-auto") && result) {
-          const blob = await api<Blob>(
-            `/attendances/${result.id}/evidence`,
-            token,
-          );
-          if (current === generation.current)
-            setImage(URL.createObjectURL(blob));
+          const evidenceImages = await loadEvidenceImages(result.id, token);
+          if (current === generation.current) setImages(evidenceImages);
+          else Object.values(evidenceImages).forEach((url) => URL.revokeObjectURL(url));
         }
       }
     } catch (e) {
@@ -357,12 +376,9 @@ function App() {
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, [user]);
-  useEffect(() => {
-    const objectUrl = image;
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [image]);
+  useEffect(() => () => {
+    Object.values(images).forEach((url) => { if (url) URL.revokeObjectURL(url); });
+  }, [images]);
   async function login(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -395,6 +411,8 @@ function App() {
       generation.current++;
       setEmployees(null);
       setAttendances(null);
+      setTodayStaff([]);
+      setTodayAttendances([]);
       setDepartments([]);
       setLoading(false);
       setToken("");
@@ -403,9 +421,7 @@ function App() {
       setDate("");
       setDepartment("");
       setEmployeeStatus("");
-      setToday(null);
-      setFile(null);
-      setImage("");
+      setToday(null);      setImages({});
       setNotice("");
       setError("");
       window.history.replaceState({}, "", "/");
@@ -424,7 +440,7 @@ function App() {
         Employee & { activation?: { token: string; expiresAt: string } }
       >(`/employees${editing ? `/${editing}` : ""}`, token, {
         method: editing ? "PATCH" : "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(({ employeeNumber: _employeeNumber, ...employeeData } = form) => employeeData),
       });
       const message = editing
         ? "Data karyawan diperbarui."
@@ -441,17 +457,18 @@ function App() {
       setBusy(false);
     }
   }
-  async function deactivate() {
-    if (!pendingDeactivate) return;
+  async function deactivate(reason: string) {
+    if (!editing) return;
     setBusy(true);
     setError("");
     try {
-      await api(`/employees/${pendingDeactivate.id}`, token, {
+      await api(`/employees/${editing}`, token, {
         method: "DELETE",
+        body: JSON.stringify({ reason }),
       });
-      setPendingDeactivate(null);
-      setNotice("Karyawan dinonaktifkan.");
-      await reload();
+      setEmployeeActive(false);
+      navigate("employees", "HRD");
+      setNotice("Karyawan dinonaktifkan. Alasan tersimpan di audit.");
     } catch (e) {
       report(e);
     } finally {
@@ -474,42 +491,21 @@ function App() {
       setBusy(false);
     }
   }
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!file) return;
+  async function submit(bundle: AttendanceCaptureBundle) {
     setBusy(true);
     setError("");
     try {
-      if (!taskDescription.trim()) {
-        setError("Isi task yang sedang dikerjakan.");
-        return;
-      }
-      if (!location) {
-        setError("Ambil lokasi WFH sebelum check-in.");
-        return;
-      }
-      if (!photoCapture && (!photoDate || !photoTime)) {
-        setError("Pilih tanggal dan waktu pengambilan foto.");
-        return;
-      }
       const data = new FormData();
-      data.append("photo", file);
-      data.append("latitude", String(location.latitude));
-      data.append("longitude", String(location.longitude));
-      data.append("locationAccuracy", String(location.locationAccuracy));
-      data.append("taskDescription", taskDescription.trim());
-      if (!photoCapture) data.append("checkInPhotoCapturedAt", `${photoDate}T${photoTime}`);
-      if (reason.trim()) data.append("wfhReason", reason.trim());
+      data.append("workProof", bundle.workProof);
+      data.append("selfie", bundle.selfie);
+      data.append("workProofType", bundle.workProofType);
       const record = await api<Attendance>("/attendances", token, {
         method: "POST",
         headers: { "Idempotency-Key": key.current },
         body: data,
       });
       setToday(record);
-      setFile(null);
-      setLocation(null);
-      setReason("");
-      setTaskDescription("");
+      setImages(await loadEvidenceImages(record.id, token));
       key.current = crypto.randomUUID();
       navigate("success", "EMPLOYEE");
     } catch (e) {
@@ -521,13 +517,13 @@ function App() {
           );
           if (existing) {
             setToday(existing);
-            setFile(null);
+            setImages(await loadEvidenceImages(existing.id, token));
             key.current = crypto.randomUUID();
             navigate("success", "EMPLOYEE");
             return;
           }
         } catch {
-          /* keep file and retry key */
+          // Retain the capture and idempotency key for a safe retry.
         }
       }
       report(e);
@@ -535,36 +531,36 @@ function App() {
       setBusy(false);
     }
   }
-  async function selectPhoto(selected: File | null) {
-    const requestId = ++photoRequestId.current;
-    setFile(selected);
-    setPhotoCapture(null);
-    setPhotoDate("");
-    setPhotoTime("");
+  async function checkOut(bundle: AttendanceCaptureBundle) {
+    setBusy(true);
     setError("");
-    key.current = crypto.randomUUID();
-    if (!selected) { setCheckingPhoto(false); return; }
-    setCheckingPhoto(true);
     try {
-      const body = new FormData(); body.append("photo", selected);
-      const result = await api<{ capturedAt: string | null; offset: string | null }>("/attendances/photo-metadata", token, { method: "POST", body });
-      if (requestId === photoRequestId.current && result.capturedAt) setPhotoCapture({ capturedAt: result.capturedAt, offset: result.offset });
-    } catch (e) { if (requestId === photoRequestId.current) report(e); }
-    finally { if (requestId === photoRequestId.current) setCheckingPhoto(false); }
-  }
-  async function checkOut() {
-    setBusy(true); setError("");
-    try {
-      const record = await api<Attendance>("/attendances/me/check-out", token, { method: "POST" });
+      const data = new FormData();
+      data.append("workProof", bundle.workProof);
+      data.append("selfie", bundle.selfie);
+      data.append("workProofType", bundle.workProofType);
+      const record = await api<Attendance>("/attendances/me/check-out", token, {
+        method: "POST",
+        headers: { "Idempotency-Key": key.current },
+        body: data,
+      });
       setToday(record);
-      navigate(record.checkOutType === "AUTO" ? "checkout-auto" : "checkout-success", "EMPLOYEE");
-    } catch (e) { report(e); }
-    finally { setBusy(false); }
+      setImages(await loadEvidenceImages(record.id, token));
+      key.current = crypto.randomUUID();
+      navigate(
+        record.checkOutType === "AUTO" ? "checkout-auto" : "checkout-success",
+        "EMPLOYEE",
+      );
+    } catch (e) {
+      report(e);
+    } finally {
+      setBusy(false);
+    }
   }
-  async function submitMissedCheckIn(values: { workDate: string; claimedCheckInTime: string; claimedCheckOutTime: string; taskDescription: string; reason: string; truthConfirmed: boolean }) {
+  async function submitMissedCheckIn(values: { workDate: string; claimedCheckInTime: string; claimedCheckOutTime: string; reason: string; truthConfirmed: boolean }) {
     setBusy(true); setError("");
     try {
-      const claim = await api<{ id: string }>("/attendance-corrections/missed-checkin", token, { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify(values) });
+      const claim = await api<{ id: string }>("/attendance-claims", token, { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify(values) });
       setNotice(`Klaim check-in dikirim untuk ditinjau. Referensi: ${claim.id}`);
       navigate("attendance", "EMPLOYEE");
     } catch (e) { report(e); }
@@ -572,7 +568,9 @@ function App() {
   }
   function edit(employee: Employee) {
     setEditing(employee.id);
+    setEditingEmployee(employee);
     setEmployeeActive(employee.active);
+    setEmployeeLoginActive(employee.user.active);
     setForm({
       email: employee.user.email,
       fullName: employee.fullName,
@@ -584,7 +582,7 @@ function App() {
   }
   function openDetail(id: string) {
     setDetail(null);
-    setImage("");
+    setImages({});
     navigate("detail", user!.role, id);
   }
   if (window.location.pathname.startsWith("/activate/"))
@@ -613,7 +611,9 @@ function App() {
       />
     );
   const section =
-    view === "employees" || view === "employee-form"
+    view === "attendance-today" || view === "claim-review"
+      ? view
+      : view === "employees" || view === "employee-form"
       ? "employees"
       : view === "dashboard" ||
           (user.role === "EMPLOYEE" &&
@@ -625,6 +625,10 @@ function App() {
   const title =
     view === "employees"
       ? "Data Karyawan"
+      : view === "attendance-today"
+        ? "Check-in Hari Ini"
+        : view === "claim-review"
+          ? "Review Klaim Absensi"
       : view === "employee-form"
         ? editing
           ? "Ubah Karyawan"
@@ -708,7 +712,7 @@ function App() {
                 <p className="muted">
                   {view === "dashboard" && user.role === "HRD"
                     ? `${new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date())} · Pembaruan ${new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date())} WIB`
-                    : view === "employees" ? "Kelola informasi dan akses karyawan." : view === "employee-form" ? "Lengkapi data karyawan dan informasi akunnya." : view === "attendance" && user.role === "HRD" ? "Pantau sesi check-in dan check-out karyawan." : "Kehadiran WFH tercatat berdasarkan waktu server."}
+                    : view === "employees" ? "Kelola informasi dan akses karyawan." : view === "employee-form" ? "Lengkapi data karyawan dan informasi akunnya." : view === "attendance-today" ? "Lihat karyawan yang sudah dan belum check-in WFH hari ini." : view === "claim-review" ? "Tinjau klaim karyawan yang lupa check-in pada tanggal sebelumnya." : view === "attendance" && user.role === "HRD" ? "Pantau seluruh sesi check-in dan check-out karyawan." : "Kehadiran WFH tercatat berdasarkan waktu server."}
                 </p>
               </>
             )}
@@ -722,14 +726,16 @@ function App() {
                   department: departments[0]?.code ?? "",
                 });
                 setEditing(null);
+                setEditingEmployee(null);
                 setEmployeeActive(true);
+                setEmployeeLoginActive(false);
                 navigate("employee-form", "HRD");
               }}
             >
               + Tambah Karyawan
             </button>
           )}
-          {view === "dashboard" && user.role === "HRD" && <button onClick={() => navigate("attendance", "HRD")}>Review Klaim</button>}
+          {view === "dashboard" && user.role === "HRD" && <button onClick={() => navigate("claim-review", "HRD")}>Review Klaim</button>}
         </header>}
         {error && (
           <div role="alert" className="alert error">
@@ -751,7 +757,7 @@ function App() {
             onDetail={openDetail}
             onMissedCheckIn={() => navigate("missed-checkin", "EMPLOYEE")}
             onNavigate={() =>
-              navigate(user.role === "EMPLOYEE" ? (!today ? "submit" : today.checkOutType === "AUTO" ? "checkout-auto" : today.checkOutAt ? "attendance" : "checkout") : "attendance", user.role)
+              navigate(user.role === "EMPLOYEE" ? (!today ? "submit" : today.checkOutType === "AUTO" ? "checkout-auto" : today.checkOutAt ? "attendance" : "checkout") : "attendance-today", user.role)
             }
             formatTime={time}
           />
@@ -761,21 +767,6 @@ function App() {
             today={today}
             busy={busy}
             loading={loading}
-            file={file}
-            photoCapture={photoCapture}
-            checkingPhoto={checkingPhoto}
-            photoDate={photoDate}
-            setPhotoDate={setPhotoDate}
-            photoTime={photoTime}
-            setPhotoTime={setPhotoTime}
-            setFile={selectPhoto}
-            location={location}
-            setLocation={setLocation}
-            taskDescription={taskDescription}
-            setTaskDescription={setTaskDescription}
-            reason={reason}
-            setReason={setReason}
-            setError={setError}
             keyRef={key}
             onSubmit={submit}
             onDashboard={() => navigate("dashboard", "EMPLOYEE")}
@@ -783,10 +774,10 @@ function App() {
           />
         )}
         {view === "success" && today && (
-          <CheckInReceipt attendance={today} image={image} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />
+          <CheckInReceipt attendance={today} images={images} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />
         )}
-        {view === "checkout" && today && !today.checkOutAt && <CheckoutConfirmation attendance={today} busy={busy} onConfirm={() => void checkOut()} onCancel={() => navigate("dashboard", "EMPLOYEE")} />}
-        {(view === "checkout-success" || view === "checkout-auto") && today?.checkOutAt && <SessionCompletion attendance={today} automatic={view === "checkout-auto" || today.checkOutType === "AUTO"} image={image} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />}
+        {view === "checkout" && today && !today.checkOutAt && <CheckoutConfirmation attendance={today} busy={busy} loading={loading} keyRef={key} onConfirm={checkOut} onCancel={() => navigate("dashboard", "EMPLOYEE")} />}
+        {(view === "checkout-success" || view === "checkout-auto") && today?.checkOutAt && <SessionCompletion attendance={today} automatic={view === "checkout-auto" || today.checkOutType === "AUTO"} images={images} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />}
         {view === "missed-checkin" && <MissedCheckInForm busy={busy} onSubmit={submitMissedCheckIn} onCancel={() => navigate("dashboard", "EMPLOYEE")} />}
         {view === "profile" && (
           <ProfilePage
@@ -801,9 +792,14 @@ function App() {
             setForm={setForm}
             editing={editing}
             active={employeeActive}
+            loginActive={employeeLoginActive}
             departments={departments}
             busy={busy}
             onSave={save}
+            onDeactivate={deactivate}
+            onReissueActivation={() => {
+              if (editingEmployee) void reissue(editingEmployee);
+            }}
             onCancel={() => navigate("employees", "HRD")}
           />
         )}
@@ -811,7 +807,7 @@ function App() {
           (detail ? (
             <AttendanceDetail
               attendance={detail}
-              image={image}
+              images={images}
               onBack={() => navigate("attendance", user.role)}
               formatTime={time}
             />
@@ -822,6 +818,19 @@ function App() {
                 : "Detail absensi belum tersedia."}
             </p>
           ))}
+        {view === "attendance-today" && user.role === "HRD" && (
+          <AttendanceTodaySection
+            employees={todayStaff}
+            attendances={todayAttendances}
+            date={jakartaDate()}
+            loading={loading}
+            onViewAll={() => {
+              setDate(jakartaDate());
+              setDepartment("");
+              navigate("attendance", "HRD");
+            }}
+          />
+        )}
         {(view === "attendance" || view === "employees") && (
           <RecordsSection
             view={view}
@@ -866,44 +875,23 @@ function App() {
             }}
             onReload={reload}
             onEdit={edit}
-            onReissue={reissue}
-            onDeactivate={(employee) => {
-              setPendingDeactivate(employee);
-              return Promise.resolve();
-            }}
             onEvidence={async (id) => openDetail(id)}
           />
         )}
-        {view === "attendance" && (
-          <CorrectionPanel token={token} user={user} onChanged={reload} />
+        {view === "attendance" && user.role === "EMPLOYEE" && (
+          <MissedCheckInClaimsPanel token={token} user={user} onChanged={reload} />
+        )}
+        {view === "claim-review" && user.role === "HRD" && (
+          <MissedCheckInClaimsPanel
+            token={token}
+            user={user}
+            onChanged={reload}
+          />
         )}
         <p className="small muted footer-note">
-          DexaWork / Bukti absensi langsung diakses pemilik dan HRD; bukti
-          koreksi diakses pemilik dan reviewer berwenang.
+          DexaWork / Bukti absensi langsung diakses pemilik dan HRD.
         </p>
       </main>
-      <Modal
-        open={!!pendingDeactivate}
-        title="Nonaktifkan karyawan"
-        onClose={() => setPendingDeactivate(null)}
-      >
-        <p>
-          Nonaktifkan {pendingDeactivate?.fullName}? Riwayat absensi tetap
-          disimpan.
-        </p>
-        <div className="mt-[1.5vw] flex gap-[1vw]">
-          <button
-            disabled={busy}
-            onClick={() => void deactivate()}
-            className="primary"
-          >
-            Nonaktifkan
-          </button>
-          <button disabled={busy} onClick={() => setPendingDeactivate(null)}>
-            Batal
-          </button>
-        </div>
-      </Modal>
       <Modal
         open={!!activation}
         title="Tautan aktivasi akun"

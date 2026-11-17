@@ -11,8 +11,13 @@ import type { ApiRequest } from './common/security.js';
 secret('RPC_SECRET');
 const app = await NestFactory.create(AppModule);
 app.setGlobalPrefix('api/v1', { exclude: ['health', 'health/ready'] });
+const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((value) => new URL(value).origin);
 app.enableCors({
-  origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  origin: corsOrigins,
   exposedHeaders: ['X-Request-Id'],
 });
 app.use((req: ApiRequest, res: Response, next: NextFunction) => {

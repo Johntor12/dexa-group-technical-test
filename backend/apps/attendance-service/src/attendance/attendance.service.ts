@@ -6,8 +6,10 @@ import { workDate } from '../../../../libs/common/src/time.js';
 import {
   ListDto,
   SubmitDto,
+  CheckOutDto,
   pageResult,
 } from '../../../../libs/contracts/src/dto.js';
+import { AttendanceEvidenceKind } from '../../../../libs/contracts/src/attendance-evidence.js';
 import type { Principal } from '../../../../libs/contracts/src/contracts.js';
 @Injectable()
 export class AttendanceService {
@@ -32,7 +34,16 @@ export class AttendanceService {
         );
       return { record: previous.attendance, replayed: true };
     }
-    await this.storage.verify(d);
+    const expectedCheckInKinds = [
+      AttendanceEvidenceKind.CHECKIN_WORK_PROOF,
+      AttendanceEvidenceKind.CHECKIN_SELFIE,
+    ];
+    if (
+      d.evidence.length !== 2 ||
+      expectedCheckInKinds.some((kind) => !d.evidence.some((item) => item.kind === kind))
+    )
+      fail(400, 'CAPTURE_PAIR_REQUIRED', 'Check-in requires work proof and selfie.');
+    await Promise.all(d.evidence.map((item) => this.storage.verify(item)));
     const now = new Date();
     const checkOutDueAt = new Date(now.getTime() + 8 * 60 * 60 * 1000);
     try {
@@ -45,22 +56,16 @@ export class AttendanceService {
             department: employee.department,
             submittedAt: now,
             workDate: workDate(now),
-            latitude: d.latitude,
-            longitude: d.longitude,
-            locationAccuracy: d.locationAccuracy,
-            taskDescription: d.taskDescription?.trim() || null,
-            wfhReason: d.wfhReason?.trim() || null,
-            checkInPhotoCapturedAt: d.checkInPhotoCapturedAt,
-            checkInPhotoOffset: d.checkInPhotoOffset ?? null,
             checkOutDueAt,
-            evidence: {
-              create: {
-                storageKey: d.storageKey,
-                mimeType: d.mimeType,
-                size: d.size,
-                sha256: d.fingerprint,
-              },
-            },
+            evidence: { create: d.evidence.map((item) => ({
+              kind: item.kind,
+              workProofType: item.kind === AttendanceEvidenceKind.CHECKIN_WORK_PROOF ? d.workProofType : null,
+              storageKey: item.storageKey,
+              mimeType: item.mimeType,
+              size: item.size,
+              sha256: item.fingerprint,
+              recordedAt: now,
+            })) },
             idempotency: {
               create: {
                 employeeId: employee.id,
@@ -137,7 +142,7 @@ export class AttendanceService {
       include: { missedCheckInClaim: true },
     });
   }
-  async checkOut(p: Principal) {
+  async checkOut(p: Principal, d: CheckOutDto) {
     if (p.role !== 'EMPLOYEE' || !p.employee)
       fail(403, 'FORBIDDEN', 'Only employees may check out.');
     const employeeId = p.employee.id;
@@ -146,19 +151,66 @@ export class AttendanceService {
       where: { employeeId_workDate: { employeeId, workDate: today } },
     });
     if (!row) fail(409, 'CHECKIN_REQUIRED', 'Check in before checking out.');
-    if (row.checkOutAt) return row;
+    if (row.checkOutAt) {
+      if (row.checkOutType === 'AUTO') return { record: row, replayed: true };
+      if (row.checkOutIdempotencyKey === d.key && row.checkOutFingerprint === d.fingerprint)
+        return { record: row, replayed: true };
+      fail(409, 'ALREADY_CHECKED_OUT', 'This attendance session is already closed.');
+    }
     const now = new Date();
-    const automatic = !!row.checkOutDueAt && row.checkOutDueAt <= now;
-    const checkOutAt = automatic ? row.checkOutDueAt! : now;
-    await this.repo.db.attendance.updateMany({
-      where: { id: row.id, checkOutAt: null },
-      data: {
-        checkOutAt,
-        checkOutRecordedAt: now,
-        checkOutType: automatic ? 'AUTO' : 'MANUAL',
-      },
+    if (row.checkOutDueAt && row.checkOutDueAt <= now) {
+      await this.repo.db.attendance.updateMany({
+        where: { id: row.id, checkOutAt: null },
+        data: { checkOutAt: row.checkOutDueAt, checkOutRecordedAt: now, checkOutType: 'AUTO' },
+      });
+      return {
+        record: await this.repo.db.attendance.findUniqueOrThrow({ where: { id: row.id } }),
+        replayed: true,
+      };
+    }
+    const expectedCheckoutKinds = [
+      AttendanceEvidenceKind.CHECKOUT_WORK_PROOF,
+      AttendanceEvidenceKind.CHECKOUT_SELFIE,
+    ];
+    if (
+      d.evidence.length !== 2 ||
+      expectedCheckoutKinds.some((kind) => !d.evidence.some((item) => item.kind === kind))
+    )
+      fail(400, 'CAPTURE_PAIR_REQUIRED', 'Check-out requires work proof and selfie.');
+    await Promise.all(d.evidence.map((item) => this.storage.verify(item)));
+    const changed = await this.repo.db.$transaction(async (tx) => {
+      const updated = await tx.attendance.updateMany({
+        where: { id: row.id, checkOutAt: null },
+        data: {
+          checkOutAt: now,
+          checkOutRecordedAt: now,
+          checkOutType: 'MANUAL',
+          checkOutIdempotencyKey: d.key,
+          checkOutFingerprint: d.fingerprint,
+        },
+      });
+      if (updated.count !== 1) return false;
+      await tx.evidence.createMany({
+        data: d.evidence.map((item) => ({
+          attendanceId: row.id,
+          kind: item.kind,
+          workProofType: item.kind === AttendanceEvidenceKind.CHECKOUT_WORK_PROOF ? d.workProofType : null,
+          storageKey: item.storageKey,
+          mimeType: item.mimeType,
+          size: item.size,
+          sha256: item.fingerprint,
+          recordedAt: now,
+        })),
+      });
+      return true;
     });
-    return this.repo.db.attendance.findUniqueOrThrow({ where: { id: row.id } });
+    const record = await this.repo.db.attendance.findUniqueOrThrow({ where: { id: row.id } });
+    if (!changed) {
+      if (record.checkOutType === 'AUTO' || (record.checkOutIdempotencyKey === d.key && record.checkOutFingerprint === d.fingerprint))
+        return { record, replayed: true };
+      fail(409, 'ALREADY_CHECKED_OUT', 'This attendance session is already closed.');
+    }
+    return { record, replayed: false };
   }
   async closeDueSessions(now = new Date()) {
     const due = await this.repo.db.attendance.findMany({
@@ -183,17 +235,20 @@ export class AttendanceService {
   async detail(p: Principal, id: string) {
     const row = await this.repo.db.attendance.findUnique({
       where: { id },
-      include: { missedCheckInClaim: true },
+      include: {
+        missedCheckInClaim: true,
+        employee: { select: { position: true } },
+      },
     });
     if (!row) fail(404, 'NOT_FOUND', 'Attendance not found.');
     if (p.role !== 'HRD' && row.employeeId !== p.employee?.id)
       fail(403, 'FORBIDDEN', 'You cannot view this attendance.');
     return row;
   }
-  async evidence(p: Principal, id: string) {
-    await this.detail(p, id);
+  async evidence(p: Principal, request: { id: string; kind: AttendanceEvidenceKind }) {
+    await this.detail(p, request.id);
     const row = await this.repo.db.evidence.findUnique({
-      where: { attendanceId: id },
+      where: { attendanceId_kind: { attendanceId: request.id, kind: request.kind } },
     });
     if (!row) fail(404, 'NOT_FOUND', 'Evidence not found.');
     return row;

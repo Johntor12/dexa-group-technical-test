@@ -14,6 +14,20 @@ export const DepartmentCode = {
 export type DepartmentCode =
   (typeof DepartmentCode)[keyof typeof DepartmentCode];
 
+/** Stable two-digit department codes used in formatted employee numbers. */
+export const departmentNumber: Record<DepartmentCode, string> = {
+  SALES: '01',
+  MARKETING: '02',
+  PRODUCTION: '03',
+  FINANCE: '04',
+  HR: '05',
+  IT: '06',
+  R_AND_D: '07',
+  LOGISTIC: '08',
+  ADMINISTRATION_AND_SECRETARY: '09',
+  DESIGN_DEPARTMENT: '10',
+};
+
 export const departments = [
   { code: DepartmentCode.SALES, name: 'Sales' },
   { code: DepartmentCode.MARKETING, name: 'Marketing' },

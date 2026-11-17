@@ -61,7 +61,7 @@ export async function api<T>(
 export interface User {
   userId: string;
   role: "HRD" | "EMPLOYEE";
-  reviewDepartments?: DepartmentCode[];
+  missedCheckInReviewDepartments?: DepartmentCode[];
   employee?: { id: string; fullName: string };
 }
 export interface Employee {
@@ -79,17 +79,10 @@ export interface Attendance {
   employeeName: string;
   employeeNumber: string;
   department: DepartmentCode;
+  employee?: { position: string };
   submittedAt: string;
   workDate: string;
-  latitude: number | null;
-  longitude: number | null;
-  locationAccuracy: number | null;
-  taskDescription?: string | null;
-  wfhReason: string | null;
-  source?: "DIRECT" | "CORRECTION";
-  correctionRequestId?: string | null;
-  checkInPhotoCapturedAt?: string | null;
-  checkInPhotoOffset?: string | null;
+  source?: "DIRECT" | "MISSED_CHECK_IN_CLAIM";
   checkOutDueAt?: string | null;
   checkOutAt?: string | null;
   checkOutRecordedAt?: string | null;
@@ -101,9 +94,9 @@ export interface MissedCheckInClaim {
   workDate: string;
   claimedCheckInTime: string;
   claimedCheckOutTime: string;
-  taskDescription: string;
+  taskDescription?: string | null;
   reason: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: string;
   reviewedAt: string | null;
   reviewNote: string | null;
@@ -113,42 +106,6 @@ export interface MissedCheckInClaim {
     employeeNumber: string;
     department: DepartmentCode;
   };
-}
-export interface CorrectionDay {
-  workDate: string;
-  status:
-    | "NOT_RECORDED"
-    | "CORRECTION_PENDING"
-    | "CORRECTION_APPROVED"
-    | "CORRECTION_REJECTED"
-    | "SUBMITTED";
-  requestId: string | null;
-  submittedAt: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
-}
-export interface CorrectionRequest {
-  id: string;
-  employeeId: string;
-  workDate: string;
-  reason: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-  requestedAt: string;
-  reviewedAt: string | null;
-  reviewNote: string | null;
-  employee: {
-    fullName: string;
-    employeeNumber: string;
-    department: DepartmentCode;
-  };
-  priorRejectedRequestId: string | null;
-  evidence: {
-    id: string;
-    mimeType: string;
-    size: number;
-    uploadedAt: string;
-  }[];
-  attendance: Attendance | null;
 }
 export interface Page<T> {
   data: T[];

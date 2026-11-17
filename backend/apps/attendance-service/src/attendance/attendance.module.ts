@@ -7,10 +7,10 @@ import { AttendanceService } from './attendance.service.js';
 import { AutoCheckoutSweeper } from './auto-checkout-sweeper.service.js';
 import { AttendanceMessageController } from './attendance.message-controller.js';
 import { OrphanSweeper } from '../evidence/orphan-sweeper.service.js';
-import { CorrectionsService } from '../corrections/corrections.service.js';
-import { CorrectionsMessageController } from '../corrections/corrections.message-controller.js';
+import { MissedCheckInClaimsService } from '../claims/missed-check-in-claims.service.js';
+import { MissedCheckInClaimsMessageController } from '../claims/missed-check-in-claims.message-controller.js';
 @Module({
-  controllers: [AttendanceMessageController, CorrectionsMessageController],
+  controllers: [AttendanceMessageController, MissedCheckInClaimsMessageController],
   providers: [
     Database,
     RpcClients,
@@ -19,7 +19,7 @@ import { CorrectionsMessageController } from '../corrections/corrections.message
     AttendanceService,
     AutoCheckoutSweeper,
     OrphanSweeper,
-    CorrectionsService,
+    MissedCheckInClaimsService,
   ],
 })
 export class AttendanceModule {}

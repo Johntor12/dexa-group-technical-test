@@ -3,7 +3,7 @@ import { InfrastructureModule } from './common/infrastructure.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { AttendanceModule } from './attendance/attendance.module.js';
-import { AttendanceCorrectionsModule } from './attendance-corrections/attendance-corrections.module.js';
+import { AttendanceClaimsModule } from './attendance-claims/attendance-claims.module.js';
 import { HealthController } from './health.controller.js';
 @Module({
   imports: [
@@ -11,7 +11,7 @@ import { HealthController } from './health.controller.js';
     AuthModule,
     EmployeesModule,
     AttendanceModule,
-    AttendanceCorrectionsModule,
+    AttendanceClaimsModule,
   ],
   controllers: [HealthController],
 })

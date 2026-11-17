@@ -42,7 +42,7 @@ export class CredentialsService {
   async login(email: string, password: string) {
     const user = await this.repo.db.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: { employee: true, reviewGrants: true },
+      include: { employee: true, missedCheckInReviewGrants: true },
     });
     // Fixed valid bcrypt hash keeps the nonexistent-user path computationally expensive.
     const valid = await compare(
@@ -70,7 +70,7 @@ export class CredentialsService {
         userId: user.id,
         role: user.role,
         sessionId: sid,
-        reviewDepartments: user.reviewGrants.filter(g => g.permission === 'ATTENDANCE_CORRECTION_REVIEW').map(g => g.department),
+        missedCheckInReviewDepartments: user.missedCheckInReviewGrants.filter(g => g.permission === 'MISSED_CHECK_IN_CLAIM_REVIEW').map(g => g.department),
         ...(user.employee
           ? {
               employee: {
@@ -101,7 +101,7 @@ export class CredentialsService {
     const session = await this.repo.db.session.findUnique({
       where: { id: claims.sid },
       include: {
-        user: { include: { employee: true, reviewGrants: true } },
+        user: { include: { employee: true, missedCheckInReviewGrants: true } },
       },
     });
     if (
@@ -118,7 +118,7 @@ export class CredentialsService {
       userId: user.id,
       role: user.role,
       sessionId: session.id,
-      reviewDepartments: user.reviewGrants.filter(g => g.permission === 'ATTENDANCE_CORRECTION_REVIEW').map(g => g.department),
+      missedCheckInReviewDepartments: user.missedCheckInReviewGrants.filter(g => g.permission === 'MISSED_CHECK_IN_CLAIM_REVIEW').map(g => g.department),
       ...(user.employee
         ? {
             employee: {

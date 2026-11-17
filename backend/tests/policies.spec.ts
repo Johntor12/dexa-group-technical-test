@@ -16,7 +16,7 @@ describe('attendance policies',()=>{
   expect(validated(ListDto,{}).limit).toBe(20);
  });
  it('rejects role escalation in employee creation',()=>{
-  const valid={email:'test@example.test',fullName:'Test',employeeNumber:'E1',department:'IT',position:'Developer'};
+  const valid={email:'test@example.test',fullName:'Test',department:'IT',position:'Developer'};
   expect(()=>validated(CreateEmployeeDto,{...valid,role:'HRD'})).toThrow();
   expect(()=>validated(CreateEmployeeDto,{...valid,department:'UNLISTED'})).toThrow();
   expect(validated(CreateEmployeeDto,valid).department).toBe('IT');

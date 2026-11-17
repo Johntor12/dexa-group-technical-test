@@ -8,7 +8,7 @@ Konfigurasi Tailwind v4: `postcss.config.cjs` mendaftarkan `@tailwindcss/postcss
 
 UI mengikuti alur master PRD: login, dashboard sesuai peran, check-in dengan foto dan lokasi, sesi kerja, check-out manual/otomatis, klaim lupa check-in, riwayat dan detail, ringkasan HRD, manajemen karyawan, monitoring, serta profil. Seluruh data dibaca dari backend melalui `src/lib/api.ts`; tidak ada data absensi contoh yang ditampilkan sebagai data nyata. Ringkasan HRD dihitung dari seluruh halaman daftar karyawan aktif dan catatan pada tanggal Asia/Jakarta. Bukti foto diambil melalui endpoint privat.
 
-Rute employee: `/app`, `/app/check-in`, `/app/check-in/success`, `/app/check-in/missed`, `/app/check-out`, `/app/check-out/success`, `/app/check-out/automatic`, `/app/attendance/history`, `/app/attendance/:id`, dan `/app/profile`. Rute HRD tetap `/hr`, `/hr/employees`, dan `/hr/attendance` beserta detail/profil. Frontend memetakan rute ke API `/api/v1/auth/*`, `/api/v1/employees/*`, `/api/v1/attendances/*`, dan `/api/v1/attendance-corrections/*`. Sesi bearer disimpan di memori; refresh memerlukan login ulang.
+Rute employee: `/app`, `/app/check-in`, `/app/check-in/success`, `/app/check-in/missed`, `/app/check-out`, `/app/check-out/success`, `/app/check-out/automatic`, `/app/attendance/history`, `/app/attendance/:id`, dan `/app/profile`. Rute HRD tetap `/hr`, `/hr/employees`, dan `/hr/attendance` beserta detail/profil. Frontend memetakan rute ke API `/api/v1/auth/*`, `/api/v1/employees/*`, `/api/v1/attendances/*`, dan `/api/v1/attendance-claims/*`. Sesi bearer disimpan di memori; refresh memerlukan login ulang.
 
 Backend harus menjalankan ketiga layanan dan MySQL; lihat [runbook backend](../backend/README.md).
 
@@ -55,8 +55,6 @@ npm run test:e2e
 
 Browser test memerlukan Chrome lokal, backend yang sudah dibuild, dan MySQL dengan seed. Jalankan `npm --prefix backend run db:start:local` dari root workspace bila memakai database lokal proyek. Runner menjalankan layanan sementara pada port 4510/4511/4512 dan Webpack pada 5174, lalu menghentikannya. Data uji memakai nama Browser Demo Employee dan disimpan di database demo. Screenshot desktop/mobile berada di `../.local/screenshots/`.
 
-## Koreksi absensi terlewat
+## Klaim check-in yang terlupa
 
-Di Riwayat Absensi, karyawan melihat hari WFH yang telah diverifikasi dan belum tercatat, lalu dapat mengajukan koreksi dengan alasan 20–1000 karakter dan foto pendukung retroaktif. Status, waktu aktual pengajuan/peninjauan, catatan reviewer, dan bukti privat terlihat pada riwayat permintaan. Tanggal tanpa referensi WFH tidak dianggap mangkir. Reviewer yang memperoleh grant eksplisit per departemen melihat kotak tinjau pada Monitor Absensi; HRD biasa tetap hanya dapat membaca catatan absensi. Persetujuan menghasilkan catatan bertanda “Tercatat melalui koreksi” tanpa mengubah waktu absensi asli.
-
-Form “Lupa check-in?” adalah klaim terpisah: tanggal harus lampau; employee mengisi perkiraan jam mulai/selesai, task, alasan minimal 20 karakter, dan menyatakan data benar. Klaim dikirim ke HRD/reviewer bergrant dan belum menjadi kehadiran sampai disetujui. Waktu mulai/selesai yang diklaim tidak mengganti timestamp pengajuan maupun keputusan server.
+Dari alur check-in yang terlewat, karyawan mengajukan klaim dengan tanggal kerja lampau, perkiraan jam mulai/selesai, alasan minimal 20 karakter, dan konfirmasi kebenaran. Tidak ada form koreksi umum atau unggahan bukti koreksi. Klaim belum menjadi kehadiran sampai disetujui reviewer yang memiliki izin eksplisit untuk departemen karyawan. Waktu keputusan dan timestamp kehadiran dibuat oleh server; riwayat absensi asli tidak diubah.

@@ -11,6 +11,7 @@ import {
   ActivateAccountDto,
   CreateEmployeeDto,
   UpdateEmployeeDto,
+  DeactivateEmployeeRequestDto,
   ListDto,
   IdDto,
 } from '../../../../libs/contracts/src/dto.js';
@@ -99,9 +100,11 @@ export class EmployeesMessageController {
   @MessagePattern(P.deactivate) deactivate(@Payload() e: Envelope) {
     return rpcResult(async () => {
       verifyEnvelope(e);
+      const request = validated(DeactivateEmployeeRequestDto, e.data);
       return this.employees.deactivate(
         await this.credentials.identity(e.token),
-        validated(IdDto, e.data).id,
+        request.id,
+        request.reason,
       );
     });
   }

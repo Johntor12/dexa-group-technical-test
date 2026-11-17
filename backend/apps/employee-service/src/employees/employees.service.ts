@@ -10,7 +10,10 @@ import {
 } from '../../../../libs/contracts/src/dto.js';
 import type { Principal } from '../../../../libs/contracts/src/contracts.js';
 import { fail } from '../../../../libs/common/src/errors.js';
-import { departments } from '../../../../libs/contracts/src/department.js';
+import {
+  departmentNumber,
+  departments,
+} from '../../../../libs/contracts/src/department.js';
 const include = {
   user: { select: { email: true, active: true } },
 } as const;
@@ -29,9 +32,15 @@ export class EmployeesService {
     const passwordHash = await hash(randomBytes(32).toString('hex'), 12);
     const invite = activation();
     return this.repo.db.$transaction(async (tx) => {
+      const sequence = await tx.employeeNumberSequence.create({ data: {} });
+      const year = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Jakarta', year: 'numeric' }).format(new Date());
+      if (sequence.id > 9999) {
+        fail(409, 'EMPLOYEE_NUMBER_SEQUENCE_EXHAUSTED', 'The four-digit company-wide employee number sequence is exhausted.');
+      }
+      const employeeNumber = `DEXA-${year}-${departmentNumber[dto.department]}-${String(sequence.id).padStart(4, '0')}`;
       const employee = await tx.employee.create({
         data: {
-          employeeNumber: dto.employeeNumber,
+          employeeNumber,
           fullName: dto.fullName,
           position: dto.position,
           department: dto.department,
@@ -156,8 +165,9 @@ export class EmployeesService {
       return employee;
     });
   }
-  async deactivate(p: Principal, id: string) {
-    await this.detail(p, id);
+  async deactivate(p: Principal, id: string, reason: string) {
+    const before = await this.detail(p, id);
+    if (!before.active) fail(409, 'EMPLOYEE_INACTIVE', 'Employee is already inactive.');
     return this.repo.db.$transaction(async (tx) => {
       const employee = await tx.employee.update({
         where: { id },
@@ -173,7 +183,7 @@ export class EmployeesService {
           actorId: p.userId,
           employeeId: id,
           action: 'DEACTIVATE',
-          changes: { active: false },
+          changes: { active: false, reason: reason.trim() },
         },
       });
       return employee;

@@ -31,9 +31,6 @@ export class OrphanSweeper implements OnModuleInit, OnModuleDestroy {
       if (
         !(await this.repo.db.evidence.findUnique({
           where: { storageKey: key },
-        })) &&
-        !(await this.repo.db.attendanceCorrectionEvidence.findUnique({
-          where: { storageKey: key },
         }))
       ) {
         await this.storage.remove(key);

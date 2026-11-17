@@ -8,7 +8,9 @@ import { validated } from '../../../../libs/common/src/validation.js';
 import {
   ListDto,
   SubmitDto,
+  CheckOutDto,
   IdDto,
+  AttendanceEvidenceRequestDto,
 } from '../../../../libs/contracts/src/dto.js';
 import { patterns as P } from '../../../../libs/contracts/src/contracts.js';
 import type {
@@ -65,7 +67,10 @@ export class AttendanceMessageController {
   }
   @MessagePattern(P.checkOut) checkOut(@Payload() e: Envelope) {
     return rpcResult(async () =>
-      this.attendance.checkOut(await this.principal(e)),
+      this.attendance.checkOut(
+        await this.principal(e),
+        validated(CheckOutDto, e.data),
+      ),
     );
   }
   @MessagePattern(P.attendance) detail(@Payload() e: Envelope) {
@@ -80,7 +85,7 @@ export class AttendanceMessageController {
     return rpcResult(async () =>
       this.attendance.evidence(
         await this.principal(e),
-        validated(IdDto, e.data).id,
+        validated(AttendanceEvidenceRequestDto, e.data),
       ),
     );
   }

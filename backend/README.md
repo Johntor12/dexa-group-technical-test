@@ -18,7 +18,7 @@ Default bind loopback. Gateway tidak mengakses DB langsung. Attendance memvalida
 - Bearer JWT 1 jam; logout mencabut sesi; akun aktif diperiksa pada HTTP/RPC.
 - HRD membuat, mengubah, dan menonaktifkan karyawan. Akun baru belum aktif sampai karyawan memakai tautan aktivasi untuk menetapkan kata sandinya sendiri.
 - Tautan aktivasi berlaku 24 jam, hanya sekali pakai, dapat diterbitkan ulang oleh HRD, dan hanya hash token yang disimpan di MySQL. Tautan ditampilkan sekali kepada HRD untuk disalurkan secara pribadi; integrasi email belum tersedia.
-- Employee absensi satu kali per tanggal Asia/Jakarta, timestamp server UTC, JPEG/PNG/WebP maksimal 5 MiB. Kiriman baru menyertakan koordinat dan akurasi lokasi dari izin browser serta alasan WFH opsional; catatan lama dapat memiliki lokasi kosong.
+- Employee check-in sekali per tanggal Asia/Jakarta dan manual check-out memakai waktu server UTC. Keduanya memerlukan bukti area kerja/laptop dan selfie langsung dari browser; tiap gambar JPEG/PNG/WebP maksimal 5 MiB. Direct attendance tidak meminta tugas atau lokasi.
 - HRD read-only; foto hanya untuk pemilik atau HRD.
 - Idempotency persisten, unique(employeeId, workDate), transaksi metadata.
 - Validasi HTTP/RPC, request ID, structured logs, timeout 8 detik, Swagger, health.
@@ -95,7 +95,7 @@ Untuk hosting dengan Root Directory `backend`, gunakan:
 
 - Build command: `npm ci --include=dev && npm run build` (Prisma CLI and TypeScript are build-time dependencies).
 - Start command: `npm start`
-- Set variabel dari `.env.production.example` pada environment/secrets platform. Isi password TiDB yang aktif, dua secret acak berbeda (minimal 32 karakter), path CA, dan `CORS_ORIGIN=https://dexa-group-technical-test-frontend.vercel.app`.
+- Set variabel dari `.env.production.example` pada environment/secrets platform. Isi password TiDB yang aktif, dua secret acak berbeda (minimal 32 karakter), path CA, dan `CORS_ORIGIN=https://dexa-group-technical-test-frontend.vercel.app` (tanpa garis miring `/` di akhir). Gateway menormalisasi origin, tetapi konfigurasi Render tetap sebaiknya ditulis tanpa garis miring.
 - Pada Render, hanya API gateway yang menerima koneksi publik melalui `PORT`. Employee dan Attendance RPC berjalan internal pada `127.0.0.1`; jangan set `EMPLOYEE_SERVICE_HOST` atau `ATTENDANCE_SERVICE_HOST` ke `0.0.0.0` dan jangan expose port `4001`/`4002`. Error `InvalidTcpDataReceptionException` biasanya berarti ada koneksi non-Nest TCP yang mencapai port RPC.
 - Jalankan `npm run prisma:migrate:deploy:prod` sebagai release/deploy command. Perintah ini idempotent dan memakai sumber env production yang sama. Jangan jalankan `prisma:seed` pada production.
 
@@ -137,29 +137,26 @@ Lihat [API_AND_IMPLEMENTATION.md](docs/API_AND_IMPLEMENTATION.md). BRD, API/Data
 
 Referensi: [Nest TCP](https://docs.nestjs.com/microservices/basics), [Prisma MySQL](https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/mysql).
 
-## Koreksi absensi terlewat (addendum PW-PRD-ADD-001)
+## Klaim check-in yang terlupa
 
-Jalankan `npm run prisma:migrate:deploy` dan `npm run prisma:seed` setelah memperbarui kode. Migrasi `20261115110000_attendance_corrections` hanya menambah tabel/kolom; absensi lama menjadi `source=DIRECT`. Absensi yang disetujui menjadi `source=CORRECTION`, memakai `workDate` yang diminta dan `submittedAt` saat persetujuan aktual. Foto pendukung koreksi tersimpan terpisah dari foto absensi langsung dan hanya dapat dibuka pemilik atau reviewer sesuai cakupan.
+Karyawan dapat mengajukan klaim untuk tanggal kerja lampau dalam jendela MISSED_CHECKIN_CLAIM_WINDOW_DAYS (default 7 hari), dengan perkiraan waktu check-in/check-out, alasan, dan konfirmasi kebenaran. Klaim ditinjau oleh reviewer yang diberi izin eksplisit untuk departemen terkait; HRD biasa tetap read-only. Persetujuan membuat baris kehadiran dengan sumber MISSED_CHECK_IN_CLAIM dan timestamp persetujuan aktual dari server. Klaim tidak meminta foto koreksi dan tidak mengubah baris kehadiran asli.
 
-`CORRECTION_WINDOW_DAYS` menentukan jendela pengajuan (default 7 hari kalender). Hari hanya bisa diajukan jika ada baris `CorrectionEligibleDay` untuk karyawan dan tanggal itu. Tanpa referensi tersebut UI menampilkan “Perlu verifikasi jadwal”, bukan menandai mangkir. Referensi WFH ini harus disetujui sesuai kebijakan HR; seed hanya memberi satu tanggal sintetis dua hari lalu pada akun employee demo. Contoh penambahan tanggal yang sudah diverifikasi:
+API tersedia di /api/v1/attendance-claims: POST / (header Idempotency-Key), GET /me, GET /pending?status=PENDING|APPROVED|REJECTED, serta POST /:id/approve dan POST /:id/reject. Izin review disimpan pada MissedCheckInReviewGrant.
 
-```sql
-INSERT INTO CorrectionEligibleDay (id, employeeId, workDate, note)
-VALUES (UUID(), '<employee-uuid>', '2026-11-12', 'WFH disetujui');
-```
+## WFH attendance flow v2
 
-Seed membuat `SEED_REVIEWER_EMAIL` (default `hrd.reviewer.it01@pharmawork.test`) dengan kata sandi `SEED_PASSWORD` dan grant `ATTENDANCE_CORRECTION_REVIEW` **hanya untuk departemen IT**. HRD biasa tidak memperoleh grant. Reviewer lain perlu grant eksplisit per departemen pada tabel `CorrectionReviewGrant`; pengguna nonaktif ditolak oleh autentikasi dan pemilik permintaan tidak dapat menyetujui sendiri. Pengajuan ulang setelah ditolak diperbolehkan selama jendela masih berlaku, dengan tautan `priorRejectedRequestId` dan riwayat permintaan lama tetap tersimpan.
+Direct attendance now uses paired live evidence at check-in and manual check-out: a laptop screen capture or workspace camera capture, plus a front-camera selfie. Browser device timestamps are visual overlays only; server timestamps remain authoritative. Automatic checkout still closes a session eight hours after check-in and does not collect checkout evidence. Direct attendance does not collect tasks, WFH reasons, or location. Legacy columns remain in MySQL to preserve historical data; new endpoints do not write them.
 
-API baru ada di `/api/v1/attendance-corrections`: `GET eligible-days`, `POST /` multipart (`workDate`, `reason`, `evidence`, header `Idempotency-Key`), `GET me`, `GET pending?status=PENDING|APPROVED|REJECTED`, `GET :id`, `GET :id/evidence/:evidenceId`, `POST :id/cancel`, `POST :id/approve`, dan `POST :id/reject`. Keputusan serta pembatalan ditulis bersama audit dalam transaksi. Semua bukti tetap pada volume privat yang sama. Tidak ada endpoint untuk HRD mengubah absensi asli.
+The attendance evidence table stores separate check-in/work-proof, check-in/selfie, check-out/work-proof, and check-out/selfie records. Both POST /api/v1/attendances and POST /api/v1/attendances/me/check-out receive multipart workProof, selfie, workProofType, and an Idempotency-Key. HRD can read original attendance rows and private evidence but cannot edit the original record.
 
-## Task pada absensi langsung
+The only retrospective workflow is a missed check-in claim. Employees submit the missed work date, estimated check-in/check-out times, reason, and truth confirmation. An explicitly authorized reviewer approves or rejects it. Approval creates an attendance row with the actual server approval timestamp; it does not rewrite an existing attendance record or attach correction evidence.
 
-Form employee meminta deskripsi task yang dikerjakan dan alasan WFH tetap opsional. `taskDescription` ditambahkan sebagai kolom nullable lewat migrasi non-destruktif `20261116120000_attendance_task`; baris absensi lama dan absensi koreksi tetap valid tanpa nilai task. Kontrak UI baru mewajibkan task untuk check-in langsung. Monitoring mengurutkan berdasarkan `submittedAt` terbaru terlebih dahulu.
+See [WFH_ATTENDANCE_FLOW_V2.md](docs/WFH_ATTENDANCE_FLOW_V2.md) for the user flow, API details, schema changes, privacy limits, and development validation commands. Development migrations and seeding must use guarded development scripts, which reject non-loopback database URLs.
 
-## Check-in, check-out, dan klaim lupa check-in
+## Supabase Storage untuk production
 
-Migrasi aditif `20261116130000_checkin_checkout_claims` menambahkan metadata waktu pengambilan foto, batas check-out, waktu check-out, dan tabel klaim. Terapkan migrasi berurutan dengan `npm run prisma:migrate:deploy`; foto/absensi lama tetap tersimpan. Endpoint `POST /api/v1/attendances/photo-metadata` membaca EXIF `DateTimeOriginal` dan offset opsional dari foto sebelum pengiriman. Check-in akhir memvalidasi ulang foto, menyimpan waktu resmi dari server di `submittedAt`, dan menjadwalkan check-out otomatis tepat 8 jam kemudian. Waktu EXIF adalah metadata foto yang terpisah, bukan sumber hitungan durasi.
+Foto tetap disimpan pada bucket privat dan hanya diambil melalui endpoint backend yang sudah memeriksa akses; endpoint mengirim Cache-Control: no-store. Supabase Secret Key hanya dipakai di backend, tidak dimasukkan ke Vercel. Pada Supabase Dashboard, buat bucket bernama attendance-evidence dengan Public dimatikan, batas 5 MiB, dan MIME JPEG/PNG/WebP.
 
-Karyawan mengirim check-out manual melalui `POST /api/v1/attendances/me/check-out`; tidak ada foto kedua. Sweeper layanan attendance menutup sesi yang jatuh tempo dengan `checkOutAt` sama dengan batas 8 jam dan menyimpan waktu pencatatan otomatis terpisah. Akses `GET /attendances/me/today` juga memproses sesi jatuh tempo sebagai fallback.
+Pada Render backend, atur PHOTO_STORAGE_PROVIDER=supabase, SUPABASE_URL, SUPABASE_SECRET_KEY (server-side secret key, bukan publishable key), dan SUPABASE_STORAGE_BUCKET=attendance-evidence. Aplikasi memilih Supabase secara default saat NODE_ENV=production dan gagal startup dengan pesan konfigurasi jika kredensial belum diatur. Development tetap memakai storage lokal. Foto yang pernah disimpan di disk Render tidak dipindah otomatis; jika ada data lama yang perlu dipertahankan, salin file ke bucket sebelum menghapus disk/service lama.
 
-Jika check-in terlupa, employee dapat mengirim `POST /api/v1/attendance-corrections/missed-checkin` dengan tanggal lampau, perkiraan waktu mulai/selesai, task, alasan, konfirmasi kebenaran, dan `Idempotency-Key`. Pengajuan tidak langsung menjadi kehadiran. Reviewer harus memiliki grant departemen eksplisit; keputusan tersedia pada `POST /missed-checkin/:id/approve|reject`. Saat disetujui, `submittedAt` mencatat waktu persetujuan aktual dari server; waktu klaim tetap tersimpan terpisah. HRD tanpa grant tetap hanya dapat membaca catatan asli. Daftar employee dan antrean reviewer tersedia pada `/missed-checkin/me` dan `/missed-checkin/pending`.
+Untuk database production dummy yang memang akan dikosongkan, lakukan reset hanya setelah versi backend baru berhasil dideploy dan variabel Supabase sudah tersedia. Dari Shell service Render pada folder backend, jalankan: `node --import ./scripts/load-production-env.mjs ./node_modules/prisma/build/index.js migrate reset --force`, lalu `node --import ./scripts/load-production-env.mjs ./node_modules/prisma/build/index.js db seed`. Reset menghapus seluruh tabel dan data lama; seed membuat ulang akun demo. Untuk deployment rutin setelahnya, gunakan `npm run prisma:migrate:deploy:prod` agar hanya migrasi baru yang diterapkan.

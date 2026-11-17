@@ -16,6 +16,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
+  DeactivateEmployeeDto,
   ListDto,
 } from '../../../../libs/contracts/src/dto.js';
 import { RpcClients } from '../../../../libs/common/src/rpc.js';
@@ -91,12 +92,13 @@ export class EmployeesController {
   }
   @Delete(':id') deactivate(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeactivateEmployeeDto,
     @Req() r: ApiRequest,
   ) {
     return this.rpc.call(
       'employee',
       'employees.deactivate',
-      { id },
+      { id, reason: dto.reason },
       r.token,
       r.requestId,
     );
