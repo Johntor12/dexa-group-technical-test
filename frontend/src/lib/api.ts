@@ -110,6 +110,17 @@ export interface Page<T> {
   data: T[];
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
+export interface HRDashboardSummary {
+  stats: { total: number; submitted: number; pending: number; completed: number; running: number };
+  recent: Attendance[];
+}
+export interface TodayMonitoringRow {
+  employee: Employee;
+  attendance: Attendance | null;
+}
+export interface TodayMonitoringPage extends Page<TodayMonitoringRow> {
+  checkedIn: number;
+}
 export interface Department {
   code: DepartmentCode;
   name: string;

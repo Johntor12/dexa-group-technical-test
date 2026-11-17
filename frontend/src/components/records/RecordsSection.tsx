@@ -15,9 +15,11 @@ interface RecordsSectionProps {
   user: User;
   employees: Page<Employee> | null;
   attendances: Page<Attendance> | null;
-  missingEmployees: Employee[];
+  missingEmployees: Page<Employee> | null;
   departments: Department[];
   page: number;
+  missingPage: number;
+  onMissingPageChange: (value: number) => void;
   pageSize: number;
   onPageSizeChange: (value: number) => void;
   search: string;
@@ -43,6 +45,8 @@ export function RecordsSection({
   missingEmployees,
   departments,
   page,
+  missingPage,
+  onMissingPageChange,
   pageSize,
   onPageSizeChange,
   search,
@@ -141,7 +145,7 @@ export function RecordsSection({
        { key: 'source', header: 'Sumber / Status', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? <span className="status">Klaim check-in disetujui</span> : a.checkOutType === 'AUTO' ? <span className="checkout-auto-label">Otomatis</span> : a.checkOutAt ? 'Manual' : 'Sesi aktif' },
        { key: 'evidence', header: 'Detail', cell: a => <button className="detail-action" disabled={busy} onClick={() => void onEvidence(a.id)}>Lihat Detail</button> }
       ]} />}
-      {user.role === 'HRD' && view === 'attendance' && <div className="mt-[2vw]"><h3 className="mb-[1vw] font-semibold">Belum tercatat pada {date || 'hari ini'} (jadwal belum diverifikasi)</h3><DataTable<Employee> caption="Karyawan tanpa catatan absensi" loading={loading} rows={missingEmployees.filter(employee => (!department || employee.department === department) && (!search || `${employee.fullName} ${employee.employeeNumber}`.toLowerCase().includes(search.toLowerCase())))} emptyTitle="Tidak ada karyawan tanpa catatan sesuai filter." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Perlu verifikasi jadwal</span> }]} /></div>}
+      {user.role === 'HRD' && view === 'attendance' && <div className="mt-[2vw]"><h3 className="mb-[1vw] font-semibold">Belum tercatat pada {date || 'hari ini'} (jadwal belum diverifikasi)</h3><DataTable<Employee> caption="Karyawan tanpa catatan absensi" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Tidak ada karyawan tanpa catatan sesuai filter." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Perlu verifikasi jadwal</span> }]} /><div className="mt-3 flex items-center justify-between text-sm text-slate-600"><span>{missingEmployees?.meta.total ?? 0} data · Halaman {missingPage} dari {Math.max(1, missingEmployees?.meta.totalPages ?? 1)}</span><div className="flex gap-2"><Button type="button" variant="primary" size="sm" disabled={missingPage <= 1 || loading} onClick={() => onMissingPageChange(missingPage - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={missingPage >= (missingEmployees?.meta.totalPages ?? 1) || loading} onClick={() => onMissingPageChange(missingPage + 1)}>Berikutnya</Button></div></div></div>}
       <footer className="pagination">
         <div className="pagination-summary"><span>{meta?.total ?? 0} data · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span>{(view === 'attendance' || view === 'employees') && user.role === 'HRD' && <label className="page-size-select">Tampilkan<select aria-label="Jumlah data per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>}</div>
         <div>

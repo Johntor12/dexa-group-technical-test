@@ -112,6 +112,21 @@ export class AttendanceController {
       r.requestId,
     );
   }
+  @Get('hr/dashboard') @Roles('HRD') hrDashboard(@Req() r: ApiRequest) {
+    return this.rpc.call('attendance', P.hrDashboard, {}, r.token, r.requestId);
+  }
+  @Get('hr/today-monitoring') @Roles('HRD') hrTodayMonitoring(
+    @Query() q: ListDto,
+    @Req() r: ApiRequest,
+  ) {
+    return this.rpc.call('attendance', P.hrTodayMonitoring, q, r.token, r.requestId);
+  }
+  @Get('hr/missing-attendance') @Roles('HRD') hrMissingAttendance(
+    @Query() q: ListDto,
+    @Req() r: ApiRequest,
+  ) {
+    return this.rpc.call('attendance', P.hrMissingAttendance, q, r.token, r.requestId);
+  }
   @Post('me/check-out')
   @Roles('EMPLOYEE')
   @ApiConsumes('multipart/form-data')

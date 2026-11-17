@@ -105,6 +105,8 @@ model Employee {
     updatedAt          DateTime                      @updatedAt
     attendances        Attendance[]
     missedCheckInClaims MissedCheckInClaim[]
+
+    @@index([active, createdAt])
 }
 
 model Attendance {
@@ -134,6 +136,8 @@ model Attendance {
 
     @@unique([employeeId, workDate])
     @@index([workDate, department])
+    @@index([workDate, submittedAt])
+    @@index([workDate, source, checkOutAt])
 }
 
 model MissedCheckInReviewGrant {

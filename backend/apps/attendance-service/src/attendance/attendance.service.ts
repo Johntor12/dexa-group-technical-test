@@ -128,6 +128,88 @@ export class AttendanceService {
     ]);
     return pageResult(data, total, q);
   }
+  async hrDashboard(p: Principal) {
+    if (p.role !== 'HRD') fail(403, 'FORBIDDEN', 'HRD access required.');
+    const date = workDate();
+    const [total, submitted, completed, running, recent] = await Promise.all([
+      this.repo.db.employee.count({ where: { active: true } }),
+      this.repo.db.attendance.groupBy({ by: ['employeeId'], where: { workDate: date } }),
+      this.repo.db.attendance.count({ where: { workDate: date, checkOutAt: { not: null } } }),
+      this.repo.db.attendance.count({ where: { workDate: date, source: 'DIRECT', checkOutAt: null } }),
+      this.repo.db.attendance.findMany({
+        where: { workDate: date, source: 'DIRECT' },
+        orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }],
+        take: 3,
+      }),
+    ]);
+    return {
+      stats: { total, submitted: submitted.length, pending: Math.max(0, total - submitted.length), completed, running },
+      recent,
+    };
+  }
+  async hrTodayMonitoring(p: Principal, q: ListDto) {
+    if (p.role !== 'HRD') fail(403, 'FORBIDDEN', 'HRD access required.');
+    const date = workDate();
+    const where = { active: true, user: { active: true } };
+    const [employees, total, checkedIn] = await Promise.all([
+      this.repo.db.employee.findMany({
+        where,
+        skip: (q.page - 1) * q.limit,
+        take: q.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { email: true, active: true } },
+          attendances: {
+            where: { workDate: date, source: 'DIRECT' },
+            select: {
+              id: true, employeeId: true, employeeName: true, employeeNumber: true,
+              department: true, submittedAt: true, workDate: true, source: true,
+              checkOutAt: true, checkOutType: true,
+            },
+            take: 1,
+          },
+        },
+      }),
+      this.repo.db.employee.count({ where }),
+      this.repo.db.employee.count({
+        where: { ...where, attendances: { some: { workDate: date, source: 'DIRECT' } } },
+      }),
+    ]);
+    const data = employees.map(({ attendances, ...employee }) => ({
+      employee,
+      attendance: attendances[0] ?? null,
+    }));
+    return { ...pageResult(data, total, q), checkedIn };
+  }
+  async hrMissingAttendance(p: Principal, q: ListDto) {
+    if (p.role !== 'HRD') fail(403, 'FORBIDDEN', 'HRD access required.');
+    const date = q.date || workDate();
+    const where = {
+      active: true,
+      attendances: { none: { workDate: date } },
+      ...(q.department ? { department: q.department } : {}),
+      ...(q.search
+        ? {
+            OR: [
+              { fullName: { contains: q.search } },
+              { employeeNumber: { contains: q.search } },
+              { user: { email: { contains: q.search } } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.repo.db.$transaction([
+      this.repo.db.employee.findMany({
+        where,
+        include: { user: { select: { email: true, active: true } } },
+        skip: (q.page - 1) * q.limit,
+        take: q.limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.repo.db.employee.count({ where }),
+    ]);
+    return pageResult(data, total, q);
+  }
   async today(p: Principal) {
     if (p.role !== 'EMPLOYEE' || !p.employee)
       fail(403, 'FORBIDDEN', 'Employee access required.');

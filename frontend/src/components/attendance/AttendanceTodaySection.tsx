@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Attendance, Employee } from "../../lib/api";
 import { departmentLabel } from "../../lib/departments";
 import { DataTable } from "../ui/DataTable";
@@ -16,14 +16,21 @@ export function AttendanceTodaySection({
   date,
   loading,
   onViewAll,
+  page,
+  meta,
+  checkedIn,
+  onPageChange,
 }: {
   employees: Employee[];
   attendances: Attendance[];
   date: string;
   loading: boolean;
   onViewAll: () => void;
+  page: number;
+  meta: { total: number; totalPages: number };
+  checkedIn: number;
+  onPageChange: (page: number) => void;
 }) {
-  const [page, setPage] = useState(1);
   const rows = useMemo(() => {
     const directCheckIns = new Map(
       attendances
@@ -37,12 +44,9 @@ export function AttendanceTodaySection({
     }));
   }, [employees, attendances]);
 
-  const pageSize = 5;
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const visibleRows = rows.slice((page - 1) * pageSize, page * pageSize);
-  const checkedIn = rows.filter((row) => row.attendance).length;
-  const firstItem = rows.length ? (page - 1) * pageSize + 1 : 0;
-  const lastItem = Math.min(page * pageSize, rows.length);
+  const totalPages = Math.max(1, meta.totalPages);
+  const firstItem = meta.total ? (page - 1) * 5 + 1 : 0;
+  const lastItem = Math.min(page * 5, meta.total);
   const clock = (value?: string) =>
     value
       ? new Intl.DateTimeFormat("id-ID", {
@@ -61,7 +65,7 @@ export function AttendanceTodaySection({
             Status Absensi karyawan
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {date} · {checkedIn} dari {rows.length} karyawan sudah check-in hari
+            {date} · {checkedIn} dari {meta.total} karyawan sudah check-in hari
             ini.
           </p>
         </div>
@@ -73,7 +77,7 @@ export function AttendanceTodaySection({
       <DataTable<CheckInRow>
         caption="Status Absensi WFH karyawan hari ini"
         loading={loading}
-        rows={visibleRows}
+        rows={rows}
         emptyTitle="Belum ada karyawan aktif yang dapat ditampilkan."
         columns={[
           {
@@ -122,7 +126,7 @@ export function AttendanceTodaySection({
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <span>
-          Menampilkan {firstItem}–{lastItem} dari {rows.length} karyawan · 5 per
+          Menampilkan {firstItem}–{lastItem} dari {meta.total} karyawan · 5 per
           halaman
         </span>
         <div className="flex gap-2">
@@ -131,7 +135,7 @@ export function AttendanceTodaySection({
             variant="primary"
             size="sm"
             disabled={page <= 1 || loading}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            onClick={() => onPageChange(Math.max(1, page - 1))}
           >
             Sebelumnya
           </Button>
@@ -143,9 +147,7 @@ export function AttendanceTodaySection({
             variant="primary"
             size="sm"
             disabled={page >= totalPages || loading}
-            onClick={() =>
-              setPage((current) => Math.min(totalPages, current + 1))
-            }
+            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           >
             Berikutnya
           </Button>

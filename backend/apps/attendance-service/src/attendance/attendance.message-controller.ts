@@ -65,6 +65,25 @@ export class AttendanceMessageController {
       this.attendance.today(await this.principal(e)),
     );
   }
+  @MessagePattern(P.hrDashboard) hrDashboard(@Payload() e: Envelope) {
+    return rpcResult(async () => this.attendance.hrDashboard(await this.principal(e)));
+  }
+  @MessagePattern(P.hrTodayMonitoring) hrTodayMonitoring(@Payload() e: Envelope) {
+    return rpcResult(async () =>
+      this.attendance.hrTodayMonitoring(
+        await this.principal(e),
+        validated(ListDto, e.data),
+      ),
+    );
+  }
+  @MessagePattern(P.hrMissingAttendance) hrMissingAttendance(@Payload() e: Envelope) {
+    return rpcResult(async () =>
+      this.attendance.hrMissingAttendance(
+        await this.principal(e),
+        validated(ListDto, e.data),
+      ),
+    );
+  }
   @MessagePattern(P.checkOut) checkOut(@Payload() e: Envelope) {
     return rpcResult(async () =>
       this.attendance.checkOut(

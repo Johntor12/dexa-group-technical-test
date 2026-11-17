@@ -10,6 +10,8 @@ import type {
   Page,
   Department,
   DepartmentCode,
+  HRDashboardSummary,
+  TodayMonitoringPage,
 } from "./lib/api";
 import { SignInPage } from "./components/auth/SignInPage";
 import { ActivateAccountPage } from "./components/auth/ActivateAccountPage";
@@ -119,17 +121,6 @@ function routeFor(
   }
   return { view: "dashboard" };
 }
-async function allPages<T>(path: string, token: string): Promise<T[]> {
-  const join = path.includes("?") ? "&" : "?";
-  const first = await api<Page<T>>(`${path}${join}page=1&limit=100`, token);
-  const rest = await Promise.all(
-    Array.from({ length: Math.max(0, first.meta.totalPages - 1) }, (_, i) =>
-      api<Page<T>>(`${path}${join}page=${i + 2}&limit=100`, token),
-    ),
-  );
-  return [first, ...rest].flatMap((result) => result.data);
-}
-
 type EvidenceKind =
   | "CHECKIN_WORK_PROOF"
   | "CHECKIN_SELFIE"
@@ -138,12 +129,12 @@ type EvidenceKind =
 async function loadEvidenceImages(
   id: string,
   token: string,
+  hasCheckout = true,
 ): Promise<AttendanceEvidenceImages> {
   const kinds: EvidenceKind[] = [
     "CHECKIN_WORK_PROOF",
     "CHECKIN_SELFIE",
-    "CHECKOUT_WORK_PROOF",
-    "CHECKOUT_SELFIE",
+    ...(hasCheckout ? ["CHECKOUT_WORK_PROOF", "CHECKOUT_SELFIE"] as const : []),
   ];
   const entries = await Promise.all(
     kinds.map(async (kind) => {
@@ -187,6 +178,8 @@ function App() {
   const [attendances, setAttendances] = useState<Page<Attendance> | null>(null);
   const [todayAttendances, setTodayAttendances] = useState<Attendance[]>([]);
   const [todayStaff, setTodayStaff] = useState<Employee[]>([]);
+  const [todayMonitorMeta, setTodayMonitorMeta] = useState({ total: 0, totalPages: 1 });
+  const [todayCheckedIn, setTodayCheckedIn] = useState(0);
   const [today, setToday] = useState<Attendance | null>(null);
   const [stats, setStats] = useState<{
     total: number;
@@ -195,7 +188,8 @@ function App() {
     completed: number;
     running: number;
   } | null>(null);
-  const [missingEmployees, setMissingEmployees] = useState<Employee[]>([]);
+  const [missingEmployees, setMissingEmployees] = useState<Page<Employee> | null>(null);
+  const [missingPage, setMissingPage] = useState(1);
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<string | null>(null);
   const [employeeActive, setEmployeeActive] = useState(true);
@@ -223,6 +217,7 @@ function App() {
         next === "employees"
       ) {
         setPage(1);
+        setMissingPage(1);
         setSearch("");
         if (
           (next === "attendance" || next === "attendance-today") &&
@@ -263,7 +258,7 @@ function App() {
         const evidenceImages =
           record.source === "MISSED_CHECK_IN_CLAIM"
             ? {}
-            : await loadEvidenceImages(record.id, token);
+            : await loadEvidenceImages(record.id, token, !!record.checkOutAt);
         if (current === generation.current) {
           setDetail(record);
           setImages(evidenceImages);
@@ -300,21 +295,22 @@ function App() {
         if (employeeStatus) q.set("employeeStatus", employeeStatus);
         const result = await api<Page<Employee>>(`/employees?${q}`, token);
         if (current === generation.current) setEmployees(result);
+      } else if (view === "dashboard" && user.role === "HRD") {
+        const result = await api<HRDashboardSummary>("/attendances/hr/dashboard", token);
+        if (current === generation.current) {
+          setStats(result.stats);
+          setTodayAttendances(result.recent);
+        }
       } else if (view === "attendance-today" && user.role === "HRD") {
-        const todayDate = jakartaDate();
-        const [staff, records] = await Promise.all([
-          allPages<Employee>("/employees", token),
-          allPages<Attendance>(`/attendances?date=${todayDate}`, token),
-        ]);
-        const activeStaff = staff.filter(
-          (employee) => employee.active && employee.user.active,
-        );
-        const directCheckIns = records.filter(
-          (record) => record.source !== "MISSED_CHECK_IN_CLAIM",
+        const result = await api<TodayMonitoringPage>(
+          `/attendances/hr/today-monitoring?page=${page}&limit=5`,
+          token,
         );
         if (current === generation.current) {
-          setTodayStaff(activeStaff);
-          setTodayAttendances(directCheckIns);
+          setTodayStaff(result.data.map((row) => row.employee));
+          setTodayAttendances(result.data.flatMap((row) => row.attendance ? [row.attendance] : []));
+          setTodayMonitorMeta({ total: result.meta.total, totalPages: result.meta.totalPages });
+          setTodayCheckedIn(result.checkedIn);
         }
       } else if (view === "dashboard" || view === "attendance") {
         const q = new URLSearchParams({
@@ -327,50 +323,31 @@ function App() {
         if (date && view === "attendance") q.set("date", date);
         if (department && view === "attendance")
           q.set("department", department);
-        const result = await api<Page<Attendance>>(
+        const attendanceRequest = api<Page<Attendance>>(
           `/attendances${user.role === "EMPLOYEE" ? "/me" : ""}?${q}`,
           token,
         );
-        if (current === generation.current) setAttendances(result);
+        let missingRequest: Promise<Page<Employee>> | undefined;
         if (view === "attendance" && user.role === "HRD") {
-          const [staff, records] = await Promise.all([
-            allPages<Employee>("/employees", token),
-            allPages<Attendance>(
-              `/attendances?date=${date || jakartaDate()}`,
-              token,
-            ),
-          ]);
-          const submitted = new Set(records.map((record) => record.employeeId));
-          if (current === generation.current)
-            setMissingEmployees(
-              staff.filter(
-                (employee) => employee.active && !submitted.has(employee.id),
-              ),
-            );
+          const missingQuery = new URLSearchParams({
+            page: String(missingPage),
+            limit: "5",
+            date: date || jakartaDate(),
+          });
+          if (search) missingQuery.set("search", search);
+          if (department) missingQuery.set("department", department);
+          missingRequest = api<Page<Employee>>(
+            `/attendances/hr/missing-attendance?${missingQuery}`,
+            token,
+          );
         }
-        if (view === "dashboard" && user.role === "HRD") {
-          const [staff, records] = await Promise.all([
-            allPages<Employee>("/employees", token),
-            allPages<Attendance>(`/attendances?date=${jakartaDate()}`, token),
-          ]);
-          const active = staff.filter((employee) => employee.active);
-          const submitted = new Set(records.map((record) => record.employeeId));
-          if (current === generation.current) {
-            setTodayAttendances(records);
-            setStats({
-              total: active.length,
-              submitted: active.filter((employee) => submitted.has(employee.id))
-                .length,
-              pending: active.filter((employee) => !submitted.has(employee.id))
-                .length,
-              completed: records.filter((record) => !!record.checkOutAt).length,
-              running: records.filter(
-                (record) =>
-                  !record.checkOutAt &&
-                  record.source !== "MISSED_CHECK_IN_CLAIM",
-              ).length,
-            });
-          }
+        const [result, missing] = await Promise.all([
+          attendanceRequest,
+          missingRequest ?? Promise.resolve(null),
+        ]);
+        if (current === generation.current) {
+          setAttendances(result);
+          if (missing) setMissingEmployees(missing);
         }
       }
       if (
@@ -394,7 +371,7 @@ function App() {
             view === "checkout-auto") &&
           result
         ) {
-          const evidenceImages = await loadEvidenceImages(result.id, token);
+          const evidenceImages = await loadEvidenceImages(result.id, token, !!result.checkOutAt);
           if (current === generation.current) setImages(evidenceImages);
           else
             Object.values(evidenceImages).forEach((url) =>
@@ -411,6 +388,7 @@ function App() {
     user,
     token,
     page,
+    missingPage,
     attendanceLimit,
     search,
     date,
@@ -1024,6 +1002,10 @@ function App() {
             attendances={todayAttendances}
             date={jakartaDate()}
             loading={loading}
+            page={page}
+            meta={todayMonitorMeta}
+            checkedIn={todayCheckedIn}
+            onPageChange={setPage}
             onViewAll={() => {
               setDate(jakartaDate());
               setDepartment("");
@@ -1057,14 +1039,17 @@ function App() {
             onSearchChange={(value) => {
               setSearch(value);
               setPage(1);
+              setMissingPage(1);
             }}
             onDateChange={(value) => {
               setDate(value);
               setPage(1);
+              setMissingPage(1);
             }}
             onDepartmentChange={(value) => {
               setDepartment(value);
               setPage(1);
+              setMissingPage(1);
             }}
             onEmployeeStatusChange={(value) => {
               setEmployeeStatus(value);
@@ -1072,6 +1057,13 @@ function App() {
             }}
             onPageChange={(value) => {
               setPage(value);
+              requestAnimationFrame(() =>
+                window.scrollTo({ top: 0, behavior: "smooth" }),
+              );
+            }}
+            missingPage={missingPage}
+            onMissingPageChange={(value) => {
+              setMissingPage(value);
               requestAnimationFrame(() =>
                 window.scrollTo({ top: 0, behavior: "smooth" }),
               );
