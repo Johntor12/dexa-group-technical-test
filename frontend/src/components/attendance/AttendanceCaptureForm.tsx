@@ -24,7 +24,8 @@ export function AttendanceCaptureForm({
   onSubmit: (bundle: AttendanceCaptureBundle) => void;
   onCancel: () => void;
 }) {
-  const [workProofType, setWorkProofType] = useState<WorkProofType>("WORKSPACE");
+  const [workProofType, setWorkProofType] =
+    useState<WorkProofType>("WORKSPACE");
   const [workProof, setWorkProof] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
   const [target, setTarget] = useState<CaptureTarget | null>(null);
@@ -37,21 +38,30 @@ export function AttendanceCaptureForm({
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
-      void videoRef.current.play().catch(() => setError("Kamera tidak dapat diputar di browser ini."));
+      void videoRef.current
+        .play()
+        .catch(() => setError("Kamera tidak dapat diputar di browser ini."));
     }
   }, [stream]);
 
-  useEffect(() => () => stream?.getTracks().forEach((track) => track.stop()), [stream]);
+  useEffect(
+    () => () => stream?.getTracks().forEach((track) => track.stop()),
+    [stream],
+  );
 
   useEffect(() => {
     const url = workProof ? URL.createObjectURL(workProof) : "";
     setProofUrl(url);
-    return () => { if (url) URL.revokeObjectURL(url); };
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [workProof]);
   useEffect(() => {
     const url = selfie ? URL.createObjectURL(selfie) : "";
     setSelfieUrl(url);
-    return () => { if (url) URL.revokeObjectURL(url); };
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [selfie]);
 
   function stopStream() {
@@ -64,28 +74,46 @@ export function AttendanceCaptureForm({
     setError("");
     stopStream();
     try {
-      if (!navigator.mediaDevices) throw new Error("Browser tidak menyediakan akses media.");
+      if (!navigator.mediaDevices)
+        throw new Error("Browser tidak menyediakan akses media.");
       let active: MediaStream;
       if (next === "workProof" && workProofType === "SCREEN") {
         if (!navigator.mediaDevices.getDisplayMedia)
-          throw new Error("Capture layar tidak didukung browser ini. Pilih foto setup kerja.");
-        active = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+          throw new Error(
+            "Capture layar tidak didukung browser ini. Pilih foto setup kerja.",
+          );
+        active = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
       } else {
         const facingMode = next === "selfie" ? "user" : "environment";
         try {
           active = await navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: { facingMode: { ideal: facingMode }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+            video: {
+              facingMode: { ideal: facingMode },
+              width: { ideal: 1600 },
+              height: { ideal: 1200 },
+            },
           });
         } catch (cameraError) {
-          if (next !== "workProof" || facingMode !== "environment") throw cameraError;
-          active = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+          if (next !== "workProof" || facingMode !== "environment")
+            throw cameraError;
+          active = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+          });
         }
       }
       setTarget(next);
       setStream(active);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Izin kamera atau capture layar ditolak.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Izin kamera atau capture layar ditolak.",
+      );
     }
   }
 
@@ -100,7 +128,8 @@ export function AttendanceCaptureForm({
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
     const context = canvas.getContext("2d");
-    if (!context) return setError("Browser tidak dapat memproses gambar capture.");
+    if (!context)
+      return setError("Browser tidak dapat memproses gambar capture.");
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     const stamp = new Intl.DateTimeFormat("id-ID", {
       dateStyle: "medium",
@@ -112,12 +141,22 @@ export function AttendanceCaptureForm({
     context.fillRect(0, canvas.height - stripHeight, canvas.width, stripHeight);
     context.fillStyle = "#ffffff";
     context.font = `600 ${Math.max(18, Math.round(stripHeight * 0.42))}px sans-serif`;
-    context.fillText(`${phase} · ${stamp} WIB · waktu perangkat`, 16, canvas.height - Math.round(stripHeight * 0.34));
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.84));
+    context.fillText(
+      `${phase} · ${stamp} WIB · waktu perangkat`,
+      16,
+      canvas.height - Math.round(stripHeight * 0.34),
+    );
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.84),
+    );
     if (!blob) return setError("Gambar capture gagal diproses.");
-    if (blob.size > 5 * 1024 * 1024) return setError("Ukuran hasil capture melebihi 5 MiB.");
+    if (blob.size > 5 * 1024 * 1024)
+      return setError("Ukuran hasil capture melebihi 5 MiB.");
     const name = `${phase.toLowerCase()}-${target === "selfie" ? "selfie" : "work-proof"}.jpg`;
-    const file = new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
+    const file = new File([blob], name, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
     if (target === "selfie") setSelfie(file);
     else setWorkProof(file);
     keyRef.current = crypto.randomUUID();
@@ -135,22 +174,169 @@ export function AttendanceCaptureForm({
       <fieldset className="grid gap-[0.8vw] rounded-2xl border border-slate-200 p-[1.2vw]">
         <legend className="px-2 font-semibold">Bukti area kerja</legend>
         <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2"><input type="radio" checked={workProofType === "WORKSPACE"} disabled={busy || loading || !!target} onChange={() => { setWorkProofType("WORKSPACE"); setWorkProof(null); keyRef.current = crypto.randomUUID(); }} />Foto setup kerja langsung</label>
-          <label className="flex items-center gap-2"><input type="radio" checked={workProofType === "SCREEN"} disabled={busy || loading || !!target || !navigator.mediaDevices?.getDisplayMedia} onChange={() => { setWorkProofType("SCREEN"); setWorkProof(null); keyRef.current = crypto.randomUUID(); }} />Capture layar laptop</label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={workProofType === "WORKSPACE"}
+              disabled={busy || loading || !!target}
+              onChange={() => {
+                setWorkProofType("WORKSPACE");
+                setWorkProof(null);
+                keyRef.current = crypto.randomUUID();
+              }}
+            />
+            Foto setup kerja langsung
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={workProofType === "SCREEN"}
+              disabled={
+                busy ||
+                loading ||
+                !!target ||
+                !navigator.mediaDevices?.getDisplayMedia
+              }
+              onChange={() => {
+                setWorkProofType("SCREEN");
+                setWorkProof(null);
+                keyRef.current = crypto.randomUUID();
+              }}
+            />
+            Capture layar laptop
+          </label>
         </div>
-        <p className="text-sm text-slate-600">Capture layar dapat memuat informasi pribadi atau rahasia. Tutup konten yang tidak perlu sebelum membagikan layar.</p>
-        {target === "workProof" ? <div className="grid gap-3"><video ref={videoRef} autoPlay muted playsInline className="max-h-[32vw] w-full rounded-xl bg-slate-950 object-contain" /><div className="flex gap-2"><button type="button" className="primary" onClick={() => void captureFrame()}>Ambil bukti kerja</button><button type="button" onClick={stopStream}>Batal capture</button></div></div> : workProof ? <div className="grid gap-2"><img src={proofUrl} alt="Bukti area kerja yang telah dicapture" className="max-h-[28vw] rounded-xl object-contain" /><button type="button" disabled={busy || loading} onClick={() => void startCapture("workProof")}>Ambil ulang bukti kerja</button></div> : <button type="button" disabled={busy || loading || !!target} onClick={() => void startCapture("workProof")}>Mulai capture bukti kerja</button>}
+        <p className="text-sm text-slate-600">
+          Capture layar dapat memuat informasi pribadi atau rahasia. Tutup
+          konten yang tidak perlu sebelum membagikan layar.
+        </p>
+        {target === "workProof" ? (
+          <div className="grid gap-3">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="max-h-[32vw] w-full rounded-xl bg-slate-950 object-contain"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="primary"
+                onClick={() => void captureFrame()}
+              >
+                Ambil bukti kerja
+              </button>
+              <button type="button" onClick={stopStream}>
+                Batal capture
+              </button>
+            </div>
+          </div>
+        ) : workProof ? (
+          <div className="grid gap-2">
+            <img
+              src={proofUrl}
+              alt="Bukti area kerja yang telah dicapture"
+              className="max-h-[28vw] rounded-xl object-contain"
+            />
+            <button
+              type="button"
+              disabled={busy || loading}
+              onClick={() => void startCapture("workProof")}
+            >
+              Ambil ulang bukti kerja
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || loading || !!target}
+            onClick={() => void startCapture("workProof")}
+          >
+            Mulai capture bukti kerja
+          </button>
+        )}
       </fieldset>
 
       <fieldset className="grid gap-[0.8vw] rounded-2xl border border-slate-200 p-[1.2vw]">
         <legend className="px-2 font-semibold">Selfie karyawan</legend>
-        <p className="text-sm text-slate-600">Gunakan kamera depan. Foto hanya menjadi bukti visual untuk ditinjau HRD, bukan verifikasi identitas otomatis.</p>
-        {target === "selfie" ? <div className="grid gap-3"><video ref={videoRef} autoPlay muted playsInline className="max-h-[32vw] w-full rounded-xl bg-slate-950 object-contain" /><div className="flex gap-2"><button type="button" className="primary" onClick={() => void captureFrame()}>Ambil selfie</button><button type="button" onClick={stopStream}>Batal capture</button></div></div> : selfie ? <div className="grid gap-2"><img src={selfieUrl} alt="Selfie yang telah dicapture" className="max-h-[28vw] rounded-xl object-contain" /><button type="button" disabled={busy || loading} onClick={() => void startCapture("selfie")}>Ambil ulang selfie</button></div> : <button type="button" disabled={busy || loading || !!target} onClick={() => void startCapture("selfie")}>Buka kamera depan</button>}
+        <p className="text-sm text-slate-600">
+          Gunakan kamera depan. Foto hanya menjadi bukti visual untuk ditinjau
+          HRD, bukan verifikasi identitas otomatis.
+        </p>
+        {target === "selfie" ? (
+          <div className="grid gap-3">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="max-h-[32vw] w-full rounded-xl bg-slate-950 object-contain"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="primary"
+                onClick={() => void captureFrame()}
+              >
+                Ambil selfie
+              </button>
+              <button type="button" onClick={stopStream}>
+                Batal capture
+              </button>
+            </div>
+          </div>
+        ) : selfie ? (
+          <div className="grid gap-2">
+            <img
+              src={selfieUrl}
+              alt="Selfie yang telah dicapture"
+              className="max-h-[28vw] rounded-xl object-contain"
+            />
+            <button
+              type="button"
+              disabled={busy || loading}
+              onClick={() => void startCapture("selfie")}
+            >
+              Ambil ulang selfie
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || loading || !!target}
+            onClick={() => void startCapture("selfie")}
+          >
+            Buka kamera depan
+          </button>
+        )}
       </fieldset>
 
-      <p className="text-sm text-slate-600">Timestamp pada gambar memakai jam perangkat. Timestamp check-in/check-out resmi dicatat terpisah oleh server.</p>
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <div className="flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={onCancel}>Kembali</button><button type="submit" className="primary" disabled={busy || loading || !!target || !workProof || !selfie}>{busy ? "Menyimpan…" : phase === "CHECKIN" ? "Kirim check-in" : "Kirim check-out"}</button></div>
+      <p className="text-sm text-slate-600">
+        Timestamp pada gambar memakai jam perangkat. Timestamp
+        check-in/check-out resmi dicatat terpisah oleh server.
+      </p>
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <button type="button" disabled={busy} onClick={onCancel}>
+          Kembali
+        </button>
+        <button
+          type="submit"
+          className="primary"
+          disabled={busy || loading || !!target || !workProof || !selfie}
+        >
+          {busy
+            ? "Menyimpan…"
+            : phase === "CHECKIN"
+              ? "Kirim check-in"
+              : "Kirim check-out"}
+        </button>
+      </div>
     </form>
   );
 }

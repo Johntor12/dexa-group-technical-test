@@ -661,6 +661,9 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
       />
       <main className="content">
         <div className="workspace-topbar">
+          <div className="mobile-workspace-brand" aria-label="DexaWork">
+            <span>Dexa</span>Work
+          </div>
           <span className="workspace-crumb">
             Workspace / {user.role === "HRD" ? "People Operations" : "Karyawan"}
           </span>

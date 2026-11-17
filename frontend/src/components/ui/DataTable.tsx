@@ -39,7 +39,9 @@ export function DataTable<T extends { id: string }>({
               className="hover:bg-dexa-bg focus-within:bg-dexa-bg"
             >
               {columns.map((column) => (
-                <td key={column.key}>{column.cell(item)}</td>
+                <td key={column.key} data-label={column.header}>
+                  {column.cell(item)}
+                </td>
               ))}
             </tr>
           ))}

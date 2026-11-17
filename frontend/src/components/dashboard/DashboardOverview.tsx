@@ -21,7 +21,7 @@ export function DashboardOverview({ user, today, attendances, todayAttendances =
       <section className="hr-session-section">
         <div className="hr-section-heading"><h2>Sesi WFH terbaru</h2><button className="hr-text-action" onClick={onNavigate}>Lihat Monitoring →</button></div>
         <div className="hr-session-table-wrap"><table className="hr-session-table"><thead><tr><th>Karyawan</th><th>Check-in</th><th>Check-out</th><th>Durasi</th><th>Sumber / Status</th><th>Detail</th></tr></thead><tbody>
-          {sessions.map(row => <tr key={row.id}><td><strong>{row.employeeName}</strong><small>{row.employeeNumber} · {row.department}</small></td><td>{clock(row.submittedAt)}</td><td>{clock(row.checkOutAt)}</td><td>{duration(row)}</td><td>{row.checkOutType === 'AUTO' ? <span className="checkout-auto-label">Otomatis</span> : row.checkOutAt ? 'Manual' : 'Sesi aktif'}</td><td><button className="hr-text-action" onClick={() => onDetail(row.id)}>Lihat Detail</button></td></tr>)}
+          {sessions.map(row => <tr key={row.id}><td data-label="Karyawan"><strong>{row.employeeName}</strong><small>{row.employeeNumber} · {row.department}</small></td><td data-label="Check-in">{clock(row.submittedAt)}</td><td data-label="Check-out">{clock(row.checkOutAt)}</td><td data-label="Durasi">{duration(row)}</td><td data-label="Sumber / Status">{row.checkOutType === 'AUTO' ? <span className="checkout-auto-label">Otomatis</span> : row.checkOutAt ? 'Manual' : 'Sesi aktif'}</td><td data-label="Detail"><button className="hr-text-action" onClick={() => onDetail(row.id)}>Lihat Detail</button></td></tr>)}
           {!sessions.length && <tr><td colSpan={6} className="hr-empty-row">Belum ada check-in hari ini.</td></tr>}
         </tbody></table><footer className="hr-table-footer">WIB · Menampilkan {sessions.length} dari {stats?.total ?? 0} karyawan</footer></div>
       </section>
@@ -29,9 +29,17 @@ export function DashboardOverview({ user, today, attendances, todayAttendances =
     </section>;
   }
   const latest = attendances?.data[0];
-  return <section className="mx-auto mb-[2vw] max-w-[72vw] max-lg:max-w-full">
-    <div className="card border-t-[0.28vw] border-t-dexa-red"><h2 className="text-[clamp(1.2rem,1.6vw,1.6rem)] font-semibold">Kehadiran hari ini</h2><div className="mt-[1vw]"><StatusBadge active={!!today} activeLabel={today?.checkOutAt ? 'WFH selesai' : 'Sedang bekerja'} inactiveLabel="Belum check-in" /></div><p className="mt-[1.5vw] text-dexa-muted">{today?.checkOutAt ? 'Sesi WFH hari ini sudah selesai.' : today ? 'Sesi WFH sedang berjalan. Check-out saat aktivitas selesai.' : 'Mulai sesi WFH dengan mengambil foto area kerja dan selfie secara langsung.'}</p><button className="primary mt-[1.5vw]" onClick={onNavigate}>{today ? today.checkOutAt ? 'Lihat riwayat' : 'Check-out' : 'Check-in'}</button>{!today && onMissedCheckIn && <button className="mt-[0.8vw]" onClick={onMissedCheckIn}>Lupa check-in?</button>}</div>
-    {latest && <div className="card"><h3 className="font-semibold">Kehadiran terakhir</h3><p className="text-dexa-muted">{latest.employeeName} / {formatTime(latest.submittedAt)} WIB</p>{latest.source === 'MISSED_CHECK_IN_CLAIM' && <p>Tercatat melalui klaim check-in</p>}</div>}
-    <div className="card border-l-[0.28vw] border-l-dexa-red"><strong>Bukti kerja, bukan ruang pribadi.</strong><p className="text-dexa-muted">Hindari dokumen rahasia atau orang lain dalam foto. Bukti hanya dapat dilihat pemilik dan HRD.</p></div>
+  return <section className="employee-dashboard-content mx-auto mb-[2vw] max-w-[72vw] max-lg:max-w-full">
+    <div className="employee-dashboard-today-card card border-t-[0.28vw] border-t-dexa-red">
+      <h2>Kehadiran hari ini</h2>
+      <div className="employee-dashboard-status"><StatusBadge active={!!today} activeLabel={today?.checkOutAt ? 'WFH selesai' : 'Sedang bekerja'} inactiveLabel="Belum check-in" /></div>
+      <p className="employee-dashboard-status-copy text-dexa-muted">{today?.checkOutAt ? 'Sesi WFH hari ini sudah selesai.' : today ? 'Sesi WFH sedang berjalan. Check-out saat aktivitas selesai.' : 'Mulai sesi WFH dengan mengambil foto area kerja dan selfie secara langsung.'}</p>
+      <div className="employee-dashboard-actions">
+        <button className="employee-dashboard-primary-action primary" onClick={onNavigate}>{today ? today.checkOutAt ? 'Lihat riwayat' : 'Check-out' : 'Check-in'}</button>
+        {!today && onMissedCheckIn && <button className="employee-dashboard-claim-action" onClick={onMissedCheckIn}>Lupa check-in?</button>}
+      </div>
+    </div>
+    {latest && <div className="employee-dashboard-latest-card card"><h3>Kehadiran terakhir</h3><p>{latest.employeeName} / {formatTime(latest.submittedAt)} WIB</p>{latest.source === 'MISSED_CHECK_IN_CLAIM' && <p>Tercatat melalui klaim check-in</p>}</div>}
+    <div className="employee-dashboard-privacy-card card border-l-[0.28vw] border-l-dexa-red"><strong>Bukti kerja, bukan ruang pribadi.</strong><p>Hindari dokumen rahasia atau orang lain dalam foto. Bukti hanya dapat dilihat pemilik dan HRD.</p></div>
   </section>;
 }

@@ -887,3 +887,383 @@
     }
   }
 }
+
+@layer components {
+  .mobile-workspace-brand {
+    @apply hidden items-center whitespace-nowrap text-[5vw] font-bold tracking-tight text-dexa-ink;
+  }
+  .mobile-workspace-brand span {
+    @apply text-dexa-red;
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .sidebar {
+      @apply w-[7vw] px-[2vw];
+    }
+    .sidebar-heading .brand,
+    .sidebar .nav-label {
+      @apply hidden;
+    }
+    .sidebar-heading {
+      @apply justify-center;
+    }
+    .sidebar nav button {
+      @apply justify-center px-[2vw];
+    }
+    .sidebar nav button span:not(.nav-symbol),
+    .sidebar .sidebar-bottom button span {
+      @apply hidden;
+    }
+    .sidebar .sidebar-submenu {
+      @apply absolute left-full top-0 z-50 ml-[1vw] min-w-[18vw] rounded-[2vw] border border-white/15 bg-[#A52823] p-[2vw] shadow-xl;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .workspace {
+      @apply block min-h-screen pb-[16vw];
+    }
+    .content {
+      @apply w-full max-w-none px-[4vw] pb-[6vw] pt-0;
+    }
+    .workspace-topbar {
+      @apply sticky top-0 z-20 -mx-[4vw] -mt-0 mb-[5vw] min-h-[16vw] gap-[2vw] border-b border-dexa-border bg-white px-[4vw] py-[2vw];
+    }
+    .mobile-workspace-brand {
+      @apply flex text-[5vw];
+    }
+    .workspace-crumb {
+      @apply hidden;
+    }
+    .header-actions {
+      @apply ml-auto flex-nowrap gap-[2vw];
+    }
+    .header-date {
+      @apply block whitespace-nowrap text-right text-[3.2vw];
+    }
+    .header-date span {
+      @apply hidden;
+    }
+    .account-chip {
+      @apply ml-0 shrink-0;
+    }
+    .account-chip > span:last-child {
+      @apply hidden;
+    }
+    .account-avatar {
+      @apply h-[9vw] min-h-[9vw] w-[9vw] min-w-[9vw];
+    }
+    .page-heading {
+      @apply mb-[5vw] flex flex-col items-stretch gap-[3vw];
+    }
+    .page-heading h1 {
+      @apply text-[7vw] leading-tight;
+    }
+    .page-heading > div > p {
+      @apply mt-[2vw] text-[4vw] leading-relaxed;
+    }
+    .page-heading > button {
+      @apply w-full;
+    }
+    .sidebar {
+      @apply fixed inset-x-0 bottom-0 top-auto z-50 flex h-auto w-full flex-col gap-0 border-0 border-t border-dexa-border bg-white px-[2vw] pb-[env(safe-area-inset-bottom)] pt-[1vw] text-dexa-ink shadow-[0_-4px_16px_rgba(23,36,43,0.08)];
+    }
+    .sidebar-heading,
+    .sidebar .nav-label,
+    .sidebar-spacer,
+    .sidebar .privacy-card,
+    .sidebar .sidebar-bottom {
+      @apply hidden;
+    }
+    .sidebar nav,
+    .sidebar-collapsed nav {
+      @apply flex w-full min-w-0 items-stretch justify-around gap-[1vw] overflow-visible;
+    }
+    .sidebar nav > button,
+    .sidebar nav > .sidebar-nav-group {
+      @apply min-w-0 flex-1;
+    }
+    .sidebar nav button,
+    .sidebar nav .sidebar-nav-group > button {
+      @apply flex min-h-[14vw] w-full flex-col justify-center gap-[1vw] rounded-[1.5vw] border-0 bg-transparent px-[1vw] py-[1vw] text-center text-[3.2vw] leading-tight text-dexa-muted;
+    }
+    .sidebar nav button img,
+    .sidebar nav .nav-symbol {
+      @apply h-[5vw] w-[5vw];
+    }
+    .sidebar nav button img {
+      filter: none;
+    }
+    .sidebar nav .sidebar-chevron {
+      @apply hidden;
+    }
+    .sidebar nav button[aria-current] {
+      @apply bg-transparent text-dexa-red shadow-none;
+    }
+    .sidebar-collapsed {
+      @apply w-full px-[2vw];
+    }
+    .sidebar-collapsed nav button span:not(.nav-symbol) {
+      display: inline;
+    }
+    .sidebar nav .sidebar-submenu {
+      @apply absolute bottom-[calc(100%+2vw)] left-[2vw] right-[2vw] top-auto z-50 grid min-w-0 gap-[1vw] rounded-[2vw] border border-dexa-border bg-white p-[2vw] text-left shadow-lg;
+    }
+    .sidebar nav .sidebar-submenu button {
+      @apply min-h-[11vw] flex-row justify-start px-[3vw] py-[2vw] text-left text-[4vw] text-dexa-muted;
+    }
+    .sidebar nav .sidebar-submenu button[aria-current] {
+      @apply bg-[#fff0f1] text-dexa-red;
+    }
+    .sidebar nav .sidebar-submenu-dot {
+      @apply text-dexa-red;
+    }
+    .sidebar nav button:hover {
+      @apply bg-dexa-bg text-dexa-red;
+    }
+    .hr-summary-grid {
+      @apply grid-cols-1 gap-[3vw];
+    }
+    .hr-summary-card {
+      @apply min-h-0 rounded-[2vw] px-[4vw] py-[3vw];
+    }
+    .hr-summary-card > div {
+      @apply mt-[3vw] gap-[3vw];
+    }
+    .hr-session-section {
+      @apply mt-[6vw];
+    }
+    .hr-section-heading {
+      @apply mb-[3vw] flex-wrap items-start gap-[2vw];
+    }
+    .hr-session-table-wrap {
+      @apply overflow-visible rounded-[2vw] border-0 bg-transparent;
+    }
+    .hr-session-table,
+    .hr-session-table tbody {
+      @apply block min-w-0;
+    }
+    .hr-session-table thead {
+      @apply sr-only;
+    }
+    .hr-session-table tbody {
+      @apply grid gap-[3vw];
+    }
+    .hr-session-table tbody tr {
+      @apply grid gap-0 overflow-hidden rounded-[2vw] border border-dexa-border bg-white;
+    }
+    .hr-session-table tbody td {
+      @apply flex min-w-0 items-start justify-between gap-[4vw] border-b border-dexa-border px-[4vw] py-[3vw] text-right text-[4vw];
+    }
+    .hr-session-table tbody td::before {
+      content: attr(data-label);
+      @apply shrink-0 text-left font-medium text-dexa-muted;
+    }
+    .hr-session-table tbody td:first-child {
+      @apply block bg-dexa-bg text-left;
+    }
+    .hr-session-table tbody td:first-child::before {
+      content: none;
+    }
+    .hr-session-table tbody td:last-child {
+      @apply border-b-0;
+    }
+    .hr-session-table .hr-empty-row {
+      @apply block py-[6vw] text-center;
+    }
+    .hr-table-footer {
+      @apply px-[1vw] py-[3vw];
+    }
+    .filters {
+      @apply mb-[4vw] grid grid-cols-1 gap-[3vw];
+    }
+    .filters label {
+      @apply min-w-0;
+    }
+    .records .section-title {
+      @apply mb-[3vw];
+    }
+    .records .table-scroll {
+      @apply overflow-visible rounded-none border-0 bg-transparent;
+    }
+    .records table,
+    .records table tbody {
+      @apply block min-w-0;
+    }
+    .records table thead {
+      @apply sr-only;
+    }
+    .records table tbody {
+      @apply grid gap-[3vw];
+    }
+    .records table tbody tr {
+      @apply grid overflow-hidden rounded-[2vw] border border-dexa-border bg-white;
+    }
+    .records table tbody td {
+      @apply flex min-w-0 items-start justify-between gap-[4vw] border-b border-dexa-border px-[4vw] py-[3vw] text-right text-[4vw];
+    }
+    .records table tbody td::before {
+      content: attr(data-label);
+      @apply shrink-0 text-left font-medium text-dexa-muted;
+    }
+    .records table tbody td:last-child {
+      @apply border-b-0;
+    }
+    .records table tbody td[colspan] {
+      @apply block text-center;
+    }
+    .records table tbody td[colspan]::before {
+      content: none;
+    }
+    .employee-cell {
+      @apply min-w-0 flex-1 justify-end gap-[2vw] text-left;
+    }
+    .employee-cell > span:last-child {
+      @apply min-w-0 break-words;
+    }
+    .employee-actions {
+      @apply flex-wrap justify-end gap-[1vw];
+    }
+    .employee-form-page {
+      @apply min-w-0;
+    }
+    .employee-form-title,
+    .attendance-detail-heading h1 {
+      @apply text-[7vw] leading-tight;
+    }
+    .employee-form-description,
+    .attendance-detail-heading p {
+      @apply text-[4vw] leading-relaxed;
+    }
+    .employee-form-shell,
+    .employee-form {
+      @apply gap-[4vw];
+    }
+    .employee-form input,
+    .employee-form select {
+      @apply min-h-[11vw];
+    }
+    .employee-form-shell .form-actions,
+    .employee-form-shell .form-actions button {
+      @apply w-full;
+    }
+    .employee-deactivation-panel {
+      @apply rounded-[2vw] p-[4vw];
+    }
+    .attendance-detail-metrics {
+      @apply grid-cols-1 gap-[3vw];
+    }
+    .attendance-detail-layout {
+      @apply grid-cols-1 gap-[4vw];
+    }
+    .attendance-detail-photo-card,
+    .attendance-detail-info-card,
+    .attendance-details-panel,
+    .attendance-photo-panel {
+      @apply min-w-0 rounded-[2vw] p-[4vw];
+    }
+    .attendance-detail-photo {
+      @apply aspect-video max-h-none;
+    }
+    .attendance-audit-block dl,
+    .attendance-detail-info-card dl {
+      @apply grid-cols-1 gap-[3vw];
+    }
+    .attendance-submit-grid {
+      @apply grid-cols-1 gap-[4vw];
+    }
+    .attendance-submit-page,
+    .attendance-submit-page > section,
+    .attendance-submit-page .card {
+      @apply w-full max-w-none;
+    }
+    .attendance-page-intro {
+      @apply mb-[4vw];
+    }
+    .attendance-page-intro h2 {
+      @apply text-[7vw];
+    }
+    .attendance-page-intro p {
+      @apply text-[4vw] leading-relaxed;
+    }
+    .attendance-photo-panel,
+    .attendance-details-panel,
+    .attendance-submit-page .card,
+    .attendance-detail-page .card {
+      @apply gap-[4vw];
+    }
+    .photo-metadata-grid,
+    .attendance-capture-grid {
+      @apply grid-cols-1;
+    }
+    .sample-photo img {
+      @apply max-h-[65vw];
+    }
+    .attendance-detail-readonly,
+    .hr-readonly-banner,
+    .missed-claim-notice {
+      @apply rounded-[1.5vw] px-[3vw] py-[3vw] text-[4vw] leading-relaxed;
+    }
+    .pagination {
+      @apply mt-[4vw] flex-col items-stretch gap-[3vw];
+    }
+    .pagination-summary {
+      @apply flex-wrap gap-[2vw];
+    }
+    .page-size-select {
+      @apply justify-between;
+    }
+    .page-size-select select {
+      @apply min-w-[24vw];
+    }
+    .hr-privacy-note {
+      @apply mt-[4vw] grid gap-[2vw] rounded-[2vw] p-[4vw];
+    }
+    .employee-dashboard-content {
+      @apply grid w-full max-w-none gap-[3vw];
+    }
+    .employee-dashboard-content .card {
+      @apply mb-0;
+    }
+    .employee-dashboard-today-card {
+      @apply grid gap-[3vw] rounded-[2vw] border-t-[0.8vw] p-[4vw];
+    }
+    .employee-dashboard-today-card h2 {
+      @apply text-[5.2vw] leading-tight;
+    }
+    .employee-dashboard-status {
+      @apply mt-0;
+    }
+    .employee-dashboard-status-copy {
+      @apply mt-0 text-[4vw] leading-relaxed;
+    }
+    .employee-dashboard-actions {
+      @apply grid gap-[2vw];
+    }
+    .employee-dashboard-actions button {
+      @apply min-h-[12vw] w-full rounded-[1.5vw] px-[4vw] py-[3vw] text-[4vw];
+    }
+    .employee-dashboard-latest-card {
+      @apply grid gap-[2vw] rounded-[2vw] p-[4vw];
+    }
+    .employee-dashboard-latest-card h3 {
+      @apply text-[4.5vw] font-semibold;
+    }
+    .employee-dashboard-latest-card p,
+    .employee-dashboard-privacy-card p {
+      @apply text-[4vw] leading-relaxed;
+    }
+    .employee-dashboard-privacy-card {
+      @apply grid gap-[2vw] rounded-[2vw] border-l-[0.8vw] p-[4vw];
+    }
+    .employee-dashboard-claim-action {
+      @apply border-dexa-border bg-white text-dexa-ink;
+    }
+    .footer-note {
+      @apply mb-[2vw] mt-[6vw] pb-[2vw] text-[3.2vw];
+    }
+    dialog {
+      @apply max-h-[85vh] w-[92vw] max-w-none overflow-y-auto p-[4vw];
+    }
+  }
+}
