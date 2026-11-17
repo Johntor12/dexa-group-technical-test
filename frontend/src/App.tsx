@@ -493,14 +493,17 @@ function App() {
     setBusy(true);
     setError("");
     try {
+      const employeePayload = {
+        email: form.email.trim(),
+        fullName: form.fullName.trim(),
+        department: form.department,
+        position: form.position.trim(),
+      };
       const result = await api<
         Employee & { activation?: { token: string; expiresAt: string } }
-      >(`/employees${editing ? `/${editing}` : ""}`, token, {
+      >("/employees" + (editing ? "/" + editing : ""), token, {
         method: editing ? "PATCH" : "POST",
-        body: JSON.stringify(
-          ({ employeeNumber: _employeeNumber, ...employeeData } = form) =>
-            employeeData,
-        ),
+        body: JSON.stringify(employeePayload),
       });
       const message = editing
         ? "Data karyawan diperbarui."
