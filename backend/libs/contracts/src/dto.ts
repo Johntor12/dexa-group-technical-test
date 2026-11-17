@@ -55,6 +55,17 @@ export class ActivateAccountDto {
   @ApiProperty() @Matches(/^[a-f0-9]{64}$/) token!: string;
   @ApiProperty() @IsString() @Length(12, 72) @IsByteLength(12, 72) password!: string;
 }
+export class ForgotPasswordDto {
+  @ApiProperty() @IsEmail() @Length(3, 191) email!: string;
+}
+export class ResetPasswordDto {
+  @ApiProperty() @Matches(/^[a-f0-9]{64}$/) token!: string;
+  @ApiProperty() @IsString() @Length(12, 72) @IsByteLength(12, 72) password!: string;
+}
+export class ChangePasswordDto {
+  @ApiProperty() @IsString() @Length(1, 72) @IsByteLength(1, 72) currentPassword!: string;
+  @ApiProperty() @IsString() @Length(12, 72) @IsByteLength(12, 72) newPassword!: string;
+}
 export class ListDto {
   @ApiPropertyOptional()
   @IsOptional()

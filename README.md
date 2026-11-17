@@ -13,6 +13,8 @@ flowchart LR
   H[HRD] --> A[Create employee]
   A --> I[Employee activates account]
   I --> L[Employee signs in]
+  L -->|forgot password| P[One-time reset link]
+  P --> L
   L --> C[Check-in: work proof + selfie]
   C --> S[Server-timestamped WFH session]
   S --> O[Check-out: work proof + selfie]

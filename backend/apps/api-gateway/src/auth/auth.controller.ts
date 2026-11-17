@@ -11,7 +11,10 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   ActivateAccountDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
   LoginDto,
+  ResetPasswordDto,
 } from '../../../../libs/contracts/src/dto.js';
 import { RpcClients } from '../../../../libs/common/src/rpc.js';
 import { fail } from '../../../../libs/common/src/errors.js';
@@ -24,6 +27,7 @@ export class AuthController {
     string,
     { count: number; until: number }
   >();
+  private readonly passwordAttempts = new Map<string, { count: number; until: number }>();
   constructor(
     private readonly rpc: RpcClients,
     private readonly auth: AuthService,
@@ -56,6 +60,55 @@ export class AuthController {
       'auth.activate',
       dto,
       undefined,
+      req.requestId,
+    );
+  }
+  private limitPasswordRequests(req: ApiRequest) {
+    const now = Date.now();
+    for (const [key, item] of this.passwordAttempts)
+      if (item.until <= now) this.passwordAttempts.delete(key);
+    const ip = req.ip ?? 'unknown';
+    const attempt = this.passwordAttempts.get(ip) ?? { count: 0, until: now + 15 * 60_000 };
+    attempt.count++;
+    this.passwordAttempts.set(ip, attempt);
+    if (attempt.count > 10)
+      fail(429, 'RATE_LIMITED', 'Terlalu banyak permintaan. Coba kembali dalam 15 menit.');
+  }
+  @Post('forgot-password') @HttpCode(200) forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() req: ApiRequest,
+  ) {
+    this.limitPasswordRequests(req);
+    return this.rpc.call(
+      'employee',
+      'auth.forgotPassword',
+      dto,
+      undefined,
+      req.requestId,
+    );
+  }
+  @Post('reset-password') @HttpCode(200) resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() req: ApiRequest,
+  ) {
+    this.limitPasswordRequests(req);
+    return this.rpc.call(
+      'employee',
+      'auth.resetPassword',
+      dto,
+      undefined,
+      req.requestId,
+    );
+  }
+  @Post('change-password') @HttpCode(200) @ApiBearerAuth() @UseGuards(AuthGuard) changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Req() req: ApiRequest,
+  ) {
+    return this.rpc.call(
+      'employee',
+      'auth.changePassword',
+      dto,
+      req.token,
       req.requestId,
     );
   }

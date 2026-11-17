@@ -10,6 +10,9 @@ All authenticated HTTP routes use `Authorization: Bearer <accessToken>`. Tokens 
 |---|---|---|---|
 | `POST` | `/auth/login` | Public | Verify credentials and establish a session. |
 | `POST` | `/auth/activate` | Public, one-time token | Set password for an invited employee. |
+| `POST` | `/auth/forgot-password` | Public, rate limited | Request a single-use password-reset link; response does not disclose whether the email exists. |
+| `POST` | `/auth/reset-password` | Public, one-time token | Set a new password using a valid reset link; revokes all existing sessions. |
+| `POST` | `/auth/change-password` | Authenticated | Verify current password, set a new password, and revoke all sessions. |
 | `GET` | `/auth/me` | Authenticated | Return current verified principal. |
 | `POST` | `/auth/logout` | Authenticated | Revoke current session. |
 | `GET` | `/employees` | HRD | Search/filter/paginate employees. |
@@ -38,6 +41,8 @@ All authenticated HTTP routes use `Authorization: Bearer <accessToken>`. Tokens 
 | `POST` | `/attendance-claims/:id/reject` | Granted reviewer | Reject a pending claim with a reason. |
 | `GET` | `/health` | Public | Gateway liveness. |
 | `GET` | `/health/ready` | Public | Check both internal services and database readiness. |
+
+Password reset tokens are random, single-use, expire after 30 minutes, and are stored only as SHA-256 hashes. In development, the reset URL is logged by the Employee Service and returned to the local UI. Production delivery uses Resend; configure `RESEND_API_KEY`, `EMAIL_FROM`, and `FRONTEND_URL` as backend-only environment variables. Forgot-password responses remain generic to prevent account enumeration. Password changes require the current password and invalidate all active sessions, so the user signs in again afterward.
 
 ### Check-in and check-out multipart contract
 

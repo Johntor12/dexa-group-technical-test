@@ -12,8 +12,8 @@ DexaWork gives employees a browser-based way to record WFH sessions and gives HR
 
 | Actor | Current capabilities |
 |---|---|
-| Employee | Activate an account, sign in, check in/out with paired visual evidence, view own session history and evidence, submit a missed-check-in claim. |
-| HRD | Create/edit/deactivate employee accounts, monitor attendance and private evidence, review claims only when an explicit department grant is present. HRD cannot edit or delete submitted attendance. |
+| Employee | Activate an account, sign in, recover/change a password, check in/out with paired visual evidence, view own session history and evidence, submit a missed-check-in claim. |
+| HRD | Create/edit/deactivate employee accounts, monitor attendance and private evidence, review claims only when an explicit department grant is present, and recover/change a password. HRD cannot edit or delete submitted attendance. |
 | Missed-check-in reviewer | An HRD identity with a `MISSED_CHECK_IN_CLAIM_REVIEW` grant for one or more departments. Cannot review their own claim. |
 
 Departments are fixed enum values: Sales, Marketing, Production, Finance, HR, IT, R&D, Logistic, Administration & Secretary, and Design Department.
@@ -22,7 +22,7 @@ Departments are fixed enum values: Sales, Marketing, Production, Finance, HR, IT
 
 | ID | Requirement | Acceptance behavior |
 |---|---|---|
-| PW-01 | Authentication and activation | Active users sign in; newly created employee accounts set their own password through a one-time activation token. Sessions are checked on authenticated requests and can be revoked. |
+| PW-01 | Authentication, activation and password recovery | Active users sign in; newly created employee accounts set their own password through a one-time activation token. Users can request a 30-minute one-time reset link or change their password after verifying the current password. Password changes and resets revoke all sessions. |
 | PW-02 | Employee administration | HRD creates, edits, and deactivates employees. Employee number is generated in the form `DEXA-{YYYY}-{DD}-{NNNN}` with a company-wide sequence. Deactivation preserves historical records. |
 | PW-03 | Live WFH check-in | Employee submits a screen/workspace capture plus a separate selfie. Server time is authoritative; browser time overlays are not trusted for attendance timestamps. Duplicate submissions are protected with idempotency and a database uniqueness constraint per employee/work date. |
 | PW-04 | Check-out | Employee submits a second evidence pair and may enter an optional activity description (up to 2,000 characters, no minimum). If the employee does not check out, a scheduled worker closes the session at the eight-hour due time. Automatic check-out does not manufacture photo evidence or activity text. |
@@ -77,7 +77,8 @@ flowchart LR
 
 - Direct check-in does not collect task descriptions, WFH reasons, or continuous location data.
 - Browser/device clock text on a capture is not an authoritative timestamp and is not used to backdate attendance.
-- No biometric verification, automated movement detection, email delivery, ERP integration, broker, or attendance-edit screen is part of the current implementation.
+- No biometric verification, automated movement detection, ERP integration, broker, or attendance-edit screen is part of the current implementation.
+- Password reset delivery is implemented through Resend in production; local development logs reset links instead of sending email.
 - Historical columns retained for compatibility are not evidence that the current UI/API collects those fields.
 - This MVP does not claim a measured production latency or availability SLA.
 

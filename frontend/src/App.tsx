@@ -15,6 +15,8 @@ import type {
 } from "./lib/api";
 import { SignInPage } from "./components/auth/SignInPage";
 import { ActivateAccountPage } from "./components/auth/ActivateAccountPage";
+import { ForgotPasswordPage } from "./components/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./components/auth/ResetPasswordPage";
 import { WorkspaceSidebar } from "./components/layout/WorkspaceSidebar";
 import { EmployeeForm } from "./components/employees/EmployeeForm";
 import type { EmployeeFormValues } from "./components/employees/EmployeeForm";
@@ -460,6 +462,27 @@ function App() {
       setBusy(false);
     }
   }
+  async function changePassword(currentPassword: string, newPassword: string) {
+    setBusy(true);
+    try {
+      await api("/auth/change-password", token, {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      generation.current++;
+      setToken("");
+      setUser(null);
+      setEmployees(null);
+      setAttendances(null);
+      setTodayStaff([]);
+      setTodayAttendances([]);
+      setToday(null);
+      window.history.replaceState({}, "", "/");
+      setNotice("Kata sandi berhasil diubah. Silakan masuk kembali.");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function logout() {
     setBusy(true);
     try {
@@ -674,6 +697,10 @@ function App() {
     setImages({});
     navigate("detail", user!.role, id);
   }
+  if (window.location.pathname === "/forgot-password")
+    return <ForgotPasswordPage />;
+  if (window.location.pathname.startsWith("/reset-password/"))
+    return <ResetPasswordPage token={window.location.pathname.split("/")[2] ?? ""} />;
   if (window.location.pathname.startsWith("/activate/"))
     return (
       <ActivateAccountPage
@@ -976,6 +1003,7 @@ function App() {
             user={user}
             onLogout={() => void logout()}
             onBack={() => navigate("dashboard", user.role)}
+            onChangePassword={changePassword}
           />
         )}
         {view === "employee-form" && (

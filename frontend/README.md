@@ -23,12 +23,14 @@ Feature UI is organized under src/components/auth, layout, attendance, employees
 
 - **HRD:** dashboard → employee list → add/edit/deactivate employee → copy an activation link for the employee → monitoring, attendance detail and private evidence.
 - **Employee activation:** open the one-time activation URL → set a password → sign in.
+- **Password recovery:** request a reset link from the sign-in page → set a new password using the single-use link. In local development, the link appears in the page and Employee Service log; production sends it by email.
+- **Password change:** from Profile, verify the current password and set a new one. All active sessions are revoked, so sign in again afterward.
 - **Employee WFH:** check-in with one live work-proof capture (screen or workspace) and a separate selfie → active session → check out with a new proof/selfie pair and an optional activity description. If checkout is missed, the backend closes the session after eight hours.
 - **Forgotten check-in:** employee files a claim for an eligible past date with a photo or PDF of work progress (maximum 5 MiB) → a reviewer with an explicit department grant reviews the claim and attachment → approval/rejection is recorded separately from original attendance.
 
 Capture evidence is for human review. The browser may display its device time as an overlay, but the server sets the official event times. The flow does not collect work tasks, WFH reason, or continuous location data. Browser camera/display access requires permission and a secure context (HTTPS or localhost).
 
-Routes are client-side paths: employee pages include /app, /app/check-in, /app/check-in/success, /app/check-in/missed, /app/check-out, /app/check-out/success, /app/check-out/automatic, /app/attendance/history and /app/profile. HRD pages include /hr, /hr/employees, /hr/employees/new, /hr/attendance, /hr/attendance/today and /hr/attendance/claims, plus detail/profile routes. Refreshing a protected path requires an active in-memory session; the user may need to sign in again after a full reload.
+Routes are client-side paths: public auth pages include /, /activate/:token, /forgot-password and /reset-password/:token. Employee pages include /app, /app/check-in, /app/check-in/success, /app/check-in/missed, /app/check-out, /app/check-out/success, /app/check-out/automatic, /app/attendance/history and /app/profile. HRD pages include /hr, /hr/employees, /hr/employees/new, /hr/attendance, /hr/attendance/today and /hr/attendance/claims, plus detail/profile routes. Refreshing a protected path requires an active in-memory session; the user may need to sign in again after a full reload.
 
 ## Styling and assets
 

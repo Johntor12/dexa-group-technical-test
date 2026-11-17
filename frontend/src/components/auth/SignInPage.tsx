@@ -104,6 +104,7 @@ export function SignInPage({
         <p className="small muted">
           Akses sesuai peran akun Anda: Karyawan atau HRD.
         </p>
+        <p className="small"><a href="/forgot-password">Lupa kata sandi?</a></p>
       </section>
     </main>
   );

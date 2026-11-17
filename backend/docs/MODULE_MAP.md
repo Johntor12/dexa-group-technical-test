@@ -6,7 +6,7 @@ This map reflects the actual NestJS runtime composition. Nest modules are DI com
 |---|---|---|---|
 | API Gateway | `AppModule` | Imports `InfrastructureModule`, `AuthModule`, `EmployeesModule`, `AttendanceModule`, `AttendanceClaimsModule`; registers `HealthController`. | HTTP composition. |
 | API Gateway | `common/InfrastructureModule` | Global providers: `RpcClients`, `PhotoStorage`, `AuthGuard`. | Shared request infrastructure, TCP clients, evidence adapter. |
-| API Gateway | `auth/AuthModule` | `AuthController`, `AuthService`. | Login/activation/logout/current identity routes. |
+| API Gateway | `auth/AuthModule` | `AuthController`, `AuthService`. | Login, activation, forgot/reset/change password, logout and current identity routes. |
 | API Gateway | `employees/EmployeesModule` | `EmployeesController`. | Thin HTTP-to-Employee-Service route adapter. |
 | API Gateway | `attendance/AttendanceModule` | `AttendanceController`. | HTTP attendance route, multipart staging and authorized evidence streaming. |
 | API Gateway | `attendance-claims/AttendanceClaimsModule` | `AttendanceClaimsController`. | HTTP claim route adapter. |

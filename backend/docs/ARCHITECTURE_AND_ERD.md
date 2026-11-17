@@ -49,7 +49,7 @@ This intentionally documents the current duplicate identity check. It is a secur
 
 | Runtime application | Actual module/folder | Responsibility | Outbound dependency |
 |---|---|---|---|
-| API Gateway (`apps/api-gateway`) | `auth` | Login, activation, logout, current principal response; login delegates through `AuthService`. | Employee Service RPC |
+| API Gateway (`apps/api-gateway`) | `auth` | Login, activation, password recovery/change, logout, current principal response; login delegates through `AuthService`. | Employee Service RPC |
 | API Gateway | `employees` | HTTP employee endpoints; forwards validated requests over RPC. | Employee Service RPC |
 | API Gateway | `attendance` | HTTP attendance endpoints, multipart capture staging, evidence streaming, HRD monitoring routes. | Attendance Service RPC; `PhotoStorage` |
 | API Gateway | `attendance-claims` | Claim creation, personal list, reviewer queue and decisions. | Attendance Service RPC |
@@ -68,6 +68,7 @@ erDiagram
   USER ||--o| EMPLOYEE : "employee account"
   USER ||--o{ SESSION : "authenticated sessions"
   USER ||--o| ACTIVATION_TOKEN : "pending activation"
+  USER ||--o| PASSWORD_RESET_TOKEN : "single-use password recovery"
   USER ||--o{ MISSED_CHECK_IN_REVIEW_GRANT : "review scope"
   EMPLOYEE ||--o{ ATTENDANCE : "work sessions"
   EMPLOYEE ||--o{ MISSED_CHECK_IN_CLAIM : "claim owner"
@@ -105,6 +106,13 @@ erDiagram
     char64 tokenHash UK
     datetime expiresAt
     datetime usedAt
+  }
+  PASSWORD_RESET_TOKEN {
+    char36 id PK
+    char36 userId FK_UK
+    char64 tokenHash UK
+    datetime expiresAt
+    datetime usedAt nullable
   }
   EMPLOYEE_NUMBER_SEQUENCE {
     int id PK

@@ -45,6 +45,7 @@ erDiagram
   USER ||--o| EMPLOYEE : account
   USER ||--o{ SESSION : sessions
   USER ||--o| ACTIVATION_TOKEN : activation
+  USER ||--o| PASSWORD_RESET_TOKEN : password_reset
   USER ||--o{ MISSED_CHECK_IN_REVIEW_GRANT : permissions
   EMPLOYEE ||--o{ ATTENDANCE : sessions
   EMPLOYEE ||--o{ MISSED_CHECK_IN_CLAIM : claims
@@ -93,6 +94,8 @@ npm run start:dev
 
 For a new machine, use infra/docker-compose.yml with values from a local-only .env file (never commit it), and set .env.development's DATABASE_URL to the published MySQL port. The guarded development loader reads .env.development and rejects non-loopback database hosts. Do not use the development scripts against cloud databases.
 
+If an existing database reports migration checksum drift, do not reset it to apply an additive feature. For the current local database, apply reviewed pending migrations with `node --import ./scripts/load-development-env.mjs ./node_modules/prisma/build/index.js migrate deploy`.
+
 npm run start:dev starts Gateway, Employee Service, and Attendance Service together. To run separate terminals, use npm run start:dev:gateway, npm run start:dev:employee, and npm run start:dev:attendance. npm start starts the three built processes and requires npm run build first.
 
 | URL | Purpose |
@@ -107,6 +110,12 @@ npm run start:dev starts Gateway, Employee Service, and Attendance Service toget
 The development seeder creates one HRD administrator, one IT claim reviewer, and 40 synthetic employee accounts (four per department). It is idempotent for those seed identities, preserves existing password hashes, and does not reset or truncate the database. New seed accounts use SEED_PASSWORD; email identities are configurable with SEED_HRD_EMAIL, SEED_EMPLOYEE_EMAIL, and SEED_REVIEWER_EMAIL. Never publish real passwords or put production credentials in documentation.
 
 Production seeding is not part of a normal deploy. It is available only for an explicitly approved dummy-data environment using npm run prisma:seed:prod with NODE_ENV=production, the production database configuration, and intentional SEED_* values. It does not reset the database. Do not point it at a real employee dataset.
+
+## Password recovery
+
+The API supports one-time password reset links (30-minute expiry), authenticated password changes, and revokes all user sessions after either operation. The `PasswordResetToken` table stores only SHA-256 token hashes. Forgot-password responses do not reveal whether an email is registered.
+
+For local development, leave `RESEND_API_KEY` empty: the Employee Service logs a reset link and the local forgot-password page displays it. For production, configure `FRONTEND_URL`, `RESEND_API_KEY`, and `EMAIL_FROM` in the backend host, using a sender address verified by Resend. These are server-side values; never put the API key in frontend/Vercel variables. Apply the additive migration with `npm run prisma:migrate:deploy:prod` during release. This does not require a database reset.
 
 ## Verification
 
@@ -130,7 +139,7 @@ Typical Render commands:
 - Start: npm start
 - Release migration: npm run prisma:migrate:deploy:prod
 
-Copy variable names from [.env.production.example](.env.production.example) into the host's environment settings. Use distinct strong production secrets and the mounted TiDB CA path. Do not put secret values in Git, frontend variables, README files, or logs. Supabase variables are server-side only; configure a private bucket named by SUPABASE_STORAGE_BUCKET and allow JPEG/PNG/WebP/PDF up to 5 MiB. Apply only additive migrations through the release command; database reset is not a deployment step. The migration `20261117180000_claim_evidence_checkout_activity` adds nullable checkout activity text and a claim attachment metadata table without deleting existing rows.
+Copy variable names from [.env.production.example](.env.production.example) into the host's environment settings. Use distinct strong production secrets and the mounted TiDB CA path. Do not put secret values in Git, frontend variables, README files, or logs. Supabase variables are server-side only; configure a private bucket named by SUPABASE_STORAGE_BUCKET and allow JPEG/PNG/WebP/PDF up to 5 MiB. Apply only additive migrations through the release command; database reset is not a deployment step. The migrations `20261117180000_claim_evidence_checkout_activity` and `20261118100000_password_reset_tokens` add data structures without deleting existing rows.
 
 ## API and service policies
 

@@ -8,6 +8,7 @@
 | `Employee` | Employee Service | Employee profile and generated employee number; one profile per user; unique employee number. |
 | `Session` | Employee Service | Revocable login session and expiry; indexed by user. |
 | `ActivationToken` | Employee Service | Single pending activation token hash and expiry; one row per user. |
+| `PasswordResetToken` | Employee Service | Single-use reset token hash and expiry; one row per user; consumed on successful reset. |
 | `EmployeeNumberSequence` | Employee Service | Company-wide monotonic sequence used in the four-digit ID suffix. |
 | `AuditEvent` | Employee Service | Actor/employee identifiers, action and JSON change summary. Current schema does not declare FK relations for these identifiers. |
 | `Attendance` | Attendance Service | Immutable work-session snapshots, authoritative timestamps, date, checkout state and source; unique `(employeeId, workDate)`. |

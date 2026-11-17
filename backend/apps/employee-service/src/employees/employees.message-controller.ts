@@ -9,6 +9,9 @@ import { validated } from '../../../../libs/common/src/validation.js';
 import {
   LoginDto,
   ActivateAccountDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  ChangePasswordDto,
   CreateEmployeeDto,
   UpdateEmployeeDto,
   DeactivateEmployeeRequestDto,
@@ -36,6 +39,31 @@ export class EmployeesMessageController {
       verifyEnvelope(e);
       const d = validated(ActivateAccountDto, e.data);
       return this.credentials.activate(d.token, d.password);
+    });
+  }
+  @MessagePattern(P.forgotPassword) forgotPassword(@Payload() e: Envelope) {
+    return rpcResult(async () => {
+      verifyEnvelope(e);
+      const d = validated(ForgotPasswordDto, e.data);
+      return this.credentials.forgotPassword(d.email);
+    });
+  }
+  @MessagePattern(P.resetPassword) resetPassword(@Payload() e: Envelope) {
+    return rpcResult(async () => {
+      verifyEnvelope(e);
+      const d = validated(ResetPasswordDto, e.data);
+      return this.credentials.resetPassword(d.token, d.password);
+    });
+  }
+  @MessagePattern(P.changePassword) changePassword(@Payload() e: Envelope) {
+    return rpcResult(async () => {
+      verifyEnvelope(e);
+      const d = validated(ChangePasswordDto, e.data);
+      return this.credentials.changePassword(
+        await this.credentials.identity(e.token),
+        d.currentPassword,
+        d.newPassword,
+      );
     });
   }
   @MessagePattern(P.identity) identity(@Payload() e: Envelope) {
