@@ -94,7 +94,6 @@ export interface MissedCheckInClaim {
   workDate: string;
   claimedCheckInTime: string;
   claimedCheckOutTime: string;
-  taskDescription?: string | null;
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: string;
