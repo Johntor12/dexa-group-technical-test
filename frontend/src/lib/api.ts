@@ -22,7 +22,7 @@ export async function api<T>(
     },
   }).catch(() => {
     throw new ApiError(
-      "Tidak dapat terhubung ke backend. Jalankan MySQL dan layanan NestJS, lalu coba lagi.",
+      "Tidak dapat menjangkau backend. Periksa URL API dan pastikan layanan backend aktif.",
       0,
     );
   });

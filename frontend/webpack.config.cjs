@@ -7,7 +7,24 @@ require("dotenv").config({
   quiet: true,
 });
 
-module.exports = (_env, argv) => ({
+module.exports = (_env, argv) => {
+  const isProduction = argv.mode === "production";
+  const configuredApiUrl = process.env.API_URL ?? process.env.REACT_APP_API_URL;
+  const apiUrl = configuredApiUrl ?? "http://localhost:3000/api/v1";
+
+  if (isProduction && !configuredApiUrl) {
+    throw new Error(
+      "API_URL must be set in the Vercel Production environment to the deployed backend URL, for example https://<backend-domain>/api/v1.",
+    );
+  }
+
+  if (isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/)/i.test(apiUrl)) {
+    throw new Error(
+      "Production API_URL cannot point to localhost. Set it to the deployed backend URL in Vercel, then redeploy.",
+    );
+  }
+
+  return ({
   entry: "./src/main.tsx",
   output: {
     path: path.resolve(__dirname, "dist"),
@@ -51,9 +68,7 @@ module.exports = (_env, argv) => ({
       favicon: "./public/favicon.svg",
     }),
     new webpack.DefinePlugin({
-      "process.env.API_URL": JSON.stringify(
-        process.env.API_URL ?? "http://localhost:3000/api/v1",
-      ),
+      "process.env.API_URL": JSON.stringify(apiUrl),
     }),
   ],
   devtool: argv.mode === "production" ? false : "eval-source-map",
@@ -64,4 +79,5 @@ module.exports = (_env, argv) => ({
     hot: true,
     static: { directory: path.resolve(__dirname, "public") },
   },
-});
+  });
+};
