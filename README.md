@@ -4,6 +4,15 @@ DexaWork is a web application for employee WFH check-in/check-out, private evide
 
 **POC Demo:** [Open DexaWork](https://dexa-group-technical-test-frontend.vercel.app/)
 
+### Demo accounts
+
+Use these accounts to explore the HRD and employee flows. The demo uses synthetic data; changes made by one tester may be visible to others.
+
+| Role | Email | Password |
+|---|---|---|
+| HRD | `hrd.admin01@pharmawork.test` | `cec906bcb149c6adf3f6c0f3559a5322` |
+| Employee (Marketing) | `employee.marketing01@pharmawork.test` | `cec906bcb149c6adf3f6c0f3559a5322` |
+
 The documentation distinguishes the **current implementation** from the initial PRD and architecture blueprint. Those original files remain for historical requirement traceability; the as-built documents linked below describe what the code currently does.
 
 ## Product flows
