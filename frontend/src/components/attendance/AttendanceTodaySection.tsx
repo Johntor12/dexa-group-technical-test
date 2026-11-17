@@ -3,6 +3,7 @@ import type { Attendance, Employee } from "../../lib/api";
 import { departmentLabel } from "../../lib/departments";
 import { DataTable } from "../ui/DataTable";
 import { Button } from "../ui/Button";
+import { PaginationControls } from "../ui/PaginationControls";
 
 interface CheckInRow {
   id: string;
@@ -129,28 +130,16 @@ export function AttendanceTodaySection({
           Menampilkan {firstItem}–{lastItem} dari {meta.total} karyawan · 5 per
           halaman
         </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={page <= 1 || loading}
-            onClick={() => onPageChange(Math.max(1, page - 1))}
-          >
-            Sebelumnya
-          </Button>
+        <div className="flex items-center gap-2">
           <span className="self-center" aria-live="polite">
             {page} / {totalPages}
           </span>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={page >= totalPages || loading}
-            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          >
-            Berikutnya
-          </Button>
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            loading={loading}
+          />
         </div>
       </footer>
     </section>

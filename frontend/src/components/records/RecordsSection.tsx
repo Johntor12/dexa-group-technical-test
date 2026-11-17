@@ -1,5 +1,5 @@
 import { DataTable } from '../ui/DataTable'
-import { Button } from '../ui/Button'
+import { PaginationControls } from '../ui/PaginationControls'
 import type {
   User,
   Employee,
@@ -153,7 +153,7 @@ export function RecordsSection({
           ]} />
           <footer className="pagination mt-[1vw]">
             <div className="pagination-summary"><span>{meta?.total ?? 0} karyawan · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span></div>
-            <div className="flex gap-[0.5vw]"><Button type="button" variant="primary" size="sm" disabled={page <= 1 || loading} onClick={() => onPageChange(page - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={page >= (meta?.totalPages ?? 1) || loading} onClick={() => onPageChange(page + 1)}>Berikutnya</Button></div>
+            <PaginationControls page={page} totalPages={meta?.totalPages ?? 1} onPageChange={onPageChange} loading={loading} className="flex gap-[0.5vw]" />
           </footer>
         </section>
         <section className="rounded-xl border border-slate-200 bg-white p-[1.5vw] max-sm:p-[4vw]">
@@ -161,7 +161,7 @@ export function RecordsSection({
           <DataTable<Employee> caption="Karyawan yang belum check-in" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Semua karyawan sudah memiliki catatan pada tanggal ini." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Belum check-in</span> }]} />
           <footer className="pagination mt-[1vw]">
             <div className="pagination-summary"><span>{missingEmployees?.meta.total ?? 0} karyawan · Halaman {missingPage} dari {Math.max(1, missingEmployees?.meta.totalPages ?? 1)}</span></div>
-            <div className="flex gap-[0.5vw]"><Button type="button" variant="primary" size="sm" disabled={missingPage <= 1 || loading} onClick={() => onMissingPageChange(missingPage - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={missingPage >= (missingEmployees?.meta.totalPages ?? 1) || loading} onClick={() => onMissingPageChange(missingPage + 1)}>Berikutnya</Button></div>
+            <PaginationControls page={missingPage} totalPages={missingEmployees?.meta.totalPages ?? 1} onPageChange={onMissingPageChange} loading={loading} className="flex gap-[0.5vw]" />
           </footer>
         </section>
       </section> : <DataTable<Attendance> caption="Riwayat kehadiran" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada absensi sesuai filter." columns={[
@@ -175,26 +175,7 @@ export function RecordsSection({
       ]} />}
       {!(user.role === 'HRD' && view === 'attendance') && <footer className="pagination">
         <div className="pagination-summary"><span>{meta?.total ?? 0} data · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span>{(view === 'attendance' || view === 'employees') && user.role === 'HRD' && <label className="page-size-select">Tampilkan<select aria-label="Jumlah data per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>}</div>
-        <div>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={page <= 1 || loading}
-            onClick={() => onPageChange(page - 1)}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={page >= (meta?.totalPages ?? 1) || loading}
-            onClick={() => onPageChange(page + 1)}
-          >
-            Berikutnya
-          </Button>
-        </div>
+        <PaginationControls page={page} totalPages={meta?.totalPages ?? 1} onPageChange={onPageChange} loading={loading} className="flex gap-[0.5vw]" />
       </footer>}
     </section>
   );

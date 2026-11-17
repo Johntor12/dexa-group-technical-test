@@ -1,60 +1,77 @@
-# Frontend
+# DexaWork Frontend
 
-DexaWork: React.js + TypeScript, menggunakan Webpack, Babel, dan Tailwind CSS v4.
+React.js with TypeScript for employee WFH attendance and HRD employee/attendance management. The frontend is a browser SPA built with Webpack and Tailwind CSS v4; it does not use Vite. See the [root project overview](../README.md), [backend runbook](../backend/README.md), and [current product scope](../backend/docs/CURRENT_PRODUCT_SPEC.md).
 
-Visual mengikuti [Figma DexaWork](https://www.figma.com/design/VCJXxjTCgE2XT4iMgibwgD/DexaWork?node-id=0-1): merah Dexa, panel putih, serta layout desktop/mobile. Komponen reusable ada di `src/components/auth`, `dashboard`, `layout`, `attendance`, `employees`, `records`, dan `ui`. `App.tsx` mengelola state dan panggilan API; UI berada di komponen tersebut. Token warna ada di `src/index.css` melalui `@theme`, dan aturan komponen menggunakan `@apply` Tailwind. Ukuran layout utama memakai unit `vw` dengan batas responsif.
+## UI architecture
 
-Konfigurasi Tailwind v4: `postcss.config.cjs` mendaftarkan `@tailwindcss/postcss`; `webpack.config.cjs` menjalankan `postcss-loader` setelah `css-loader`; `src/index.css` mengimpor Tailwind. Aset Figma yang dipakai disimpan di `src/assets/icons/`. Aset starter yang tidak digunakan telah dihapus.
+~~~mermaid
+flowchart TD
+  Main[src/main.tsx] --> App[src/App.tsx: route and page state]
+  App --> Auth[auth components]
+  App --> Layout[workspace layout and sidebar]
+  App --> Attendance[attendance capture, session, history and claims]
+  App --> Employees[employee forms]
+  App --> Records[HRD employee and attendance tables]
+  App --> UI[shared buttons, fields, tables, modals and status]
+  App --> API[src/lib/api.ts]
+  API -->|HTTPS REST /api/v1| Backend[NestJS API Gateway]
+~~~
 
-UI mengikuti alur master PRD: login, dashboard sesuai peran, check-in dengan foto dan lokasi, sesi kerja, check-out manual/otomatis, klaim lupa check-in, riwayat dan detail, ringkasan HRD, manajemen karyawan, monitoring, serta profil. Seluruh data dibaca dari backend melalui `src/lib/api.ts`; tidak ada data absensi contoh yang ditampilkan sebagai data nyata. Ringkasan HRD dihitung dari seluruh halaman daftar karyawan aktif dan catatan pada tanggal Asia/Jakarta. Bukti foto diambil melalui endpoint privat.
+Feature UI is organized under src/components/auth, layout, attendance, employees, records, dashboard, profile, and ui. App.tsx currently owns client-side path resolution, view state, API orchestration, and workflow state. The components present and collect feature-specific data; the backend remains authoritative for identity, timestamps and permissions.
 
-Rute employee: `/app`, `/app/check-in`, `/app/check-in/success`, `/app/check-in/missed`, `/app/check-out`, `/app/check-out/success`, `/app/check-out/automatic`, `/app/attendance/history`, `/app/attendance/:id`, dan `/app/profile`. Rute HRD tetap `/hr`, `/hr/employees`, dan `/hr/attendance` beserta detail/profil. Frontend memetakan rute ke API `/api/v1/auth/*`, `/api/v1/employees/*`, `/api/v1/attendances/*`, dan `/api/v1/attendance-claims/*`. Sesi bearer disimpan di memori; refresh memerlukan login ulang.
+## Implemented flows
 
-Backend harus menjalankan ketiga layanan dan MySQL; lihat [runbook backend](../backend/README.md).
+- **HRD:** dashboard → employee list → add/edit/deactivate employee → copy an activation link for the employee → monitoring, attendance detail and private evidence.
+- **Employee activation:** open the one-time activation URL → set a password → sign in.
+- **Employee WFH:** check-in with one live work-proof capture (screen or workspace) and a separate selfie → active session → check out with a new proof/selfie pair. If checkout is missed, the backend closes the session after eight hours.
+- **Forgotten check-in:** employee files a claim for an eligible past date → a reviewer with an explicit department grant reviews it → approval/rejection is recorded separately from original attendance.
 
-Pembuatan akun: HRD membuka Data karyawan → Tambah karyawan, lalu mengisi data karyawan tanpa kata sandi. Setelah tersimpan, dialog menampilkan tautan aktivasi yang dapat disalin dan dibagikan secara pribadi. Karyawan membuka `/activate/:token`, menetapkan kata sandi, lalu login. Akun yang belum aktif tampil sebagai “Menunggu aktivasi”; HRD dapat menerbitkan tautan baru dari daftar. Tautan berlaku 24 jam dan hanya sekali pakai. Pengiriman email otomatis belum tersedia.
+Capture evidence is for human review. The browser may display its device time as an overlay, but the server sets the official event times. The flow does not collect work tasks, WFH reason, or continuous location data. Browser camera/display access requires permission and a secure context (HTTPS or localhost).
 
-Absensi WFH baru meminta izin lokasi browser satu kali saat karyawan memilih “Izinkan dan ambil lokasi”. Koordinat dan perkiraan akurasi disimpan bersama foto; alasan WFH boleh dikosongkan. HRD dapat melihat foto dan lokasi pada dashboard serta detail absensi. Browser meminta izin lokasi dan fitur ini memerlukan HTTPS atau `localhost`; aplikasi tidak memakai pelacakan lokasi berkelanjutan.
+Routes are client-side paths: employee pages include /app, /app/check-in, /app/check-in/success, /app/check-in/missed, /app/check-out, /app/check-out/success, /app/check-out/automatic, /app/attendance/history and /app/profile. HRD pages include /hr, /hr/employees, /hr/employees/new, /hr/attendance, /hr/attendance/today and /hr/attendance/claims, plus detail/profile routes. Refreshing a protected path requires an active in-memory session; the user may need to sign in again after a full reload.
 
-Check-in mengharuskan foto, lokasi, deskripsi task, serta tanggal dan waktu foto. Frontend mencoba membaca metadata kamera (`DateTimeOriginal`, `CreateDate`, dan tag terkait) melalui backend. Jika metadata tidak ada atau tidak valid, employee memilih tanggal dan jam berdasarkan cap air yang terlihat pada foto. Cap air yang hanya berupa tulisan di piksel tidak dapat dipastikan otomatis tanpa OCR, sehingga input manual menjadi fallback. Backend memvalidasi tanggal/jam yang dikirim dan menyimpannya terpisah; timestamp check-in resmi selalu dibuat server dan tidak memakai waktu foto. Check-out manual tidak meminta foto tambahan. Jika employee tidak check-out, backend mengisi waktu check-out tepat 8 jam setelah check-in server; nilai waktu pencatatan otomatis disimpan terpisah.
+## Styling and assets
 
-## Development
+Tailwind CSS v4 is processed by PostCSS in the Webpack pipeline. The stylesheet entry is src/index.css: it imports Tailwind, declares the Dexa theme and Plus Jakarta Sans, and contains shared component selectors implemented primarily with Tailwind @apply. Page components also use Tailwind utilities. This repository currently centralizes many shared selectors in index.css; it is not accurate to describe every style as an inline utility class. Layout uses viewport-relative sizing with clamp and responsive breakpoints where appropriate. Figma-derived icons/assets live under src/assets/icons.
 
-Salin `.env.example` menjadi `.env` jika belum tersedia.
+## Local development
 
-```powershell
-npm install
+From frontend/:
+
+~~~powershell
+npm ci
+Copy-Item .env.example .env
+# API_URL defaults to http://localhost:3000/api/v1 for local development.
 npm start
-```
+~~~
 
-Buka http://localhost:5173. `npm run dev` tersedia sebagai alias.
+The dev server opens at http://localhost:5173 and supports client-side route fallback. Start all backend services and the development MySQL database first; see the [backend runbook](../backend/README.md).
 
-## Build
+## Build and checks
 
-```powershell
+~~~powershell
 npm run typecheck
-npm run build
-```
-
-Output produksi berada di `dist/`. Build menjalankan pemeriksaan TypeScript sebelum bundling. Deploy isi folder tersebut melalui static web server dengan fallback ke `index.html` jika menggunakan client-side routing.
-
-`API_URL` menentukan alamat backend. Nilai ini dimasukkan ke bundle saat build; jangan isi dengan rahasia. Restart development server atau rebuild setelah mengubah `.env`.
-
-Default API: `http://localhost:3000/api/v1`. Token bearer disimpan dalam memori; refresh halaman memerlukan login ulang. Akun demo tersedia pada variabel `SEED_*` di `backend/.env`.
-
-## Deploy ke Vercel
-
-Pilih Root Directory `frontend`. Tambahkan environment variable Production `API_URL` dengan nilai `https://<backend-domain>/api/v1`, kemudian redeploy frontend. Backend harus mengizinkan origin persis `https://dexa-group-technical-test-frontend.vercel.app` melalui `CORS_ORIGIN`.
-
-## Pengujian browser
-
-```powershell
 npm run lint
+npm run build
+~~~
+
+Webpack writes production assets to dist/. A production build deliberately requires API_URL to be configured and rejects localhost; set the public backend URL before building. API_URL is compiled into the browser bundle and must never contain a secret.
+
+## Vercel deployment
+
+The checked-in vercel.json sets the frontend root output directory to dist and rewrites SPA routes to index.html.
+
+1. Set the Vercel project Root Directory to frontend.
+2. Set Production environment variable API_URL to https://<backend-domain>/api/v1.
+3. Deploy/redeploy the frontend after changing API_URL.
+4. Configure the backend CORS_ORIGIN to allow the deployed frontend origin.
+
+The backend must be publicly reachable over HTTPS, its readiness route should be healthy, and Supabase/object-storage secrets belong only in the backend environment. Never place database or storage credentials in Vercel frontend variables.
+
+## Browser E2E
+
+~~~powershell
 npm run test:e2e
-```
+~~~
 
-Browser test memerlukan Chrome lokal, backend yang sudah dibuild, dan MySQL dengan seed. Jalankan `npm --prefix backend run db:start:local` dari root workspace bila memakai database lokal proyek. Runner menjalankan layanan sementara pada port 4510/4511/4512 dan Webpack pada 5174, lalu menghentikannya. Data uji memakai nama Browser Demo Employee dan disimpan di database demo. Screenshot desktop/mobile berada di `../.local/screenshots/`.
-
-## Klaim check-in yang terlupa
-
-Dari alur check-in yang terlewat, karyawan mengajukan klaim dengan tanggal kerja lampau, perkiraan jam mulai/selesai, alasan minimal 20 karakter, dan konfirmasi kebenaran. Tidak ada form koreksi umum atau unggahan bukti koreksi. Klaim belum menjadi kehadiran sampai disetujui reviewer yang memiliki izin eksplisit untuk departemen karyawan. Waktu keputusan dan timestamp kehadiran dibuat oleh server; riwayat absensi asli tidak diubah.
+The browser runner requires Chrome, a built backend, and a seeded disposable development database. It starts temporary backend/frontend ports and writes synthetic test records. It is not a production test and may request camera/display permissions through browser automation.

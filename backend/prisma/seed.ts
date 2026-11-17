@@ -54,7 +54,6 @@ try {
     throw new Error('SEED_PASSWORD must be 12–72 bytes');
   const passwordHash = await hash(password, 12);
   const hrdEmail = required('SEED_HRD_EMAIL');
-  const employeeEmail = required('SEED_EMPLOYEE_EMAIL');
   const reviewerEmail = process.env.SEED_REVIEWER_EMAIL ?? 'hrd.reviewer.it01@pharmawork.test';
 
   await db.user.upsert({
@@ -68,9 +67,8 @@ try {
       where: { email: employee.email },
       include: { employee: true },
     });
-    let user;
     if (existing?.employee) {
-      user = await db.user.update({
+      await db.user.update({
         where: { id: existing.id },
         data: {
           role: 'EMPLOYEE',
@@ -87,7 +85,7 @@ try {
         include: { employee: true },
       });
     } else {
-      user = await db.$transaction(async (tx) => {
+      await db.$transaction(async (tx) => {
         const lastSequence = await tx.employeeNumberSequence.aggregate({ _max: { id: true } });
         let sequenceNumber = (lastSequence._max.id ?? 0) + 1;
         let allocated = false;

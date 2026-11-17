@@ -1,5 +1,7 @@
 # API and implementation decisions
 
+> **Status: Historical first-iteration contract.** Its single-photo attendance examples are obsolete. Use [API_RPC_CONTRACTS.md](API_RPC_CONTRACTS.md) for the current paired-evidence, check-in/check-out and missed-claim contracts.
+
 This fills in payload details not present in the supplied PRD/architecture. It does not replace the unavailable source PDF or API/Data specification.
 
 ## HTTP contract

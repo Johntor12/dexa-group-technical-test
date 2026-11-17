@@ -95,14 +95,17 @@ export class AttendanceService {
     }
   }
   async list(p: Principal, q: ListDto, own: boolean) {
-    if (own && (p.role !== 'EMPLOYEE' || !p.employee))
+    const employeeId = p.employee?.id;
+    if (own && p.role !== 'EMPLOYEE')
+      fail(403, 'FORBIDDEN', 'Employee access required.');
+    if (own && !employeeId)
       fail(403, 'FORBIDDEN', 'Employee access required.');
     if (!own && p.role !== 'HRD')
       fail(403, 'FORBIDDEN', 'HRD access required.');
     const where = {
-      ...(own
-        ? { employeeId: p.employee!.id }
-        : q.employeeId
+      ...(own && employeeId
+        ? { employeeId }
+        : !own && q.employeeId
           ? { employeeId: q.employeeId }
           : {}),
       ...(q.date ? { workDate: q.date } : {}),

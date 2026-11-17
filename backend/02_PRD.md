@@ -1,5 +1,7 @@
 # PharmaWork Backend — Product Requirements Document (PRD)
 
+> **Status: Initial baseline, retained for traceability.** The application has evolved through later approved changes, including live check-in/check-out evidence and missed-check-in claims. This file is not the current acceptance contract; see [the current product scope](docs/CURRENT_PRODUCT_SPEC.md) and [current API/RPC contracts](docs/API_RPC_CONTRACTS.md).
+
 **Version:** 1.0 | **Priority:** Fullstack skill-test MVP | **Backend:** TypeScript/NestJS | **Database:** MySQL
 
 See [BRD](./01_BRD.md) for source-backed requirements; see [Architecture](./03_ARCHITECTURE.md) and [API + Data](./04_API_AND_DATA.md) for implementation contracts.

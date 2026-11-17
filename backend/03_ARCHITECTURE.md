@@ -1,5 +1,7 @@
 # PharmaWork Backend — Architecture Decision & Folder Blueprint
 
+> **Status: Initial architecture blueprint, retained for traceability.** The running repository uses the three NestJS processes and REST/TCP topology, but feature and storage details have evolved. For the as-built system, see [current architecture and ERD](docs/ARCHITECTURE_AND_ERD.md), [module map](docs/MODULE_MAP.md), and [data ownership](docs/DATA_OWNERSHIP.md).
+
 **Architecture:** NestJS monorepo, three independent processes, TCP request/response, MySQL (shared instance with logical table ownership), private photo storage.
 
 ## 1. Context and constraints

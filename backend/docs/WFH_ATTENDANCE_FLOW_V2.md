@@ -1,5 +1,7 @@
 # WFH attendance flow v2
 
+> **Status: Historical feature handoff.** The user flow remains useful, but some rollout/storage notes have changed. See [the current product scope](CURRENT_PRODUCT_SPEC.md), [current API contracts](API_RPC_CONTRACTS.md), and [backend README](../README.md) for current implementation and deployment facts.
+
 ## Scope and source distinction
 
 The source requirements in Ketentuan_Aplikasi_WFH.pdf ask for employee WFH attendance with a capture date/time and photo evidence, plus HRD employee administration and read-only attendance monitoring. They do not ask for task descriptions, location tracking, selfies, paired check-in/check-out captures, or automatic checkout. The paired live capture flow below is a product change explicitly requested after that document was reviewed; it is not a requirement from the PDF.
@@ -44,4 +46,4 @@ Capture means a browser-mediated camera frame or a screen source selected by the
 
 Development commands are guarded by scripts/load-development-env.mjs, which forces .env.development and rejects any non-loopback database URL. The production .env is not used for the local migration or checks. Development migration history should include both migration IDs above.
 
-Before production rollout, configure the private object-storage bucket and credentials, then validate upload, private read, deletion/orphan cleanup, and CORS/size limits against that storage. This implementation does not claim Supabase Storage has been integrated; development evidence uses the configured private local storage adapter. Do not run production migration commands during development validation.
+Development uses the configured private local storage adapter. Production storage integration is implemented through the Supabase adapter in `libs/common/src/storage.ts`; production requires a private bucket, server-side credentials, correct MIME/size settings, and connectivity from both backend processes. Validate upload, private read, deletion/orphan cleanup, and CORS/size limits after configuring a deployment. Do not run production migration commands during development validation.

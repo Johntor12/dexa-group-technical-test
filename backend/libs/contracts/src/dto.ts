@@ -10,7 +10,6 @@ import {
   Matches,
   IsDateString,
   IsByteLength,
-  IsNumber,
   IsEnum,
   IsBoolean,
   IsIn,
