@@ -22,7 +22,7 @@ export function TodayAttendanceCard({
 }) {
   if (today)
     return (
-      <section className="attendance-submit-page">
+      <section className="attendance-submit-page employee-wfh-flow-container">
         <div role="status" className="card grid gap-[1vw]">
           <StatusBadge
             active
@@ -36,7 +36,7 @@ export function TodayAttendanceCard({
     );
 
   return (
-    <section className="attendance-submit-page grid gap-[1.2vw]">
+    <section className="attendance-submit-page employee-wfh-flow-container grid gap-[1.2vw]">
       <div className="attendance-page-intro">
         <button
           type="button"

@@ -32,12 +32,27 @@ export class EmployeesService {
     const passwordHash = await hash(randomBytes(32).toString('hex'), 12);
     const invite = activation();
     return this.repo.db.$transaction(async (tx) => {
-      const sequence = await tx.employeeNumberSequence.create({ data: {} });
+      // TiDB may jump AUTO_INCREMENT values by a large allocation block. Allocate
+      // explicitly so the company-wide four-digit suffix remains sequential.
+      const lastSequence = await tx.employeeNumberSequence.aggregate({ _max: { id: true } });
+      let sequenceNumber = (lastSequence._max.id ?? 0) + 1;
+      let allocated = false;
+      while (sequenceNumber <= 9999) {
+        const inserted = await tx.$executeRaw`
+          INSERT IGNORE INTO \`EmployeeNumberSequence\` (\`id\`, \`createdAt\`)
+          VALUES (${sequenceNumber}, NOW())
+        `;
+        if (inserted === 1) {
+          allocated = true;
+          break;
+        }
+        sequenceNumber += 1;
+      }
       const year = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Jakarta', year: 'numeric' }).format(new Date());
-      if (sequence.id > 9999) {
+      if (!allocated) {
         fail(409, 'EMPLOYEE_NUMBER_SEQUENCE_EXHAUSTED', 'The four-digit company-wide employee number sequence is exhausted.');
       }
-      const employeeNumber = `DEXA-${year}-${departmentNumber[dto.department]}-${String(sequence.id).padStart(4, '0')}`;
+      const employeeNumber = `DEXA-${year}-${departmentNumber[dto.department]}-${String(sequenceNumber).padStart(4, '0')}`;
       const employee = await tx.employee.create({
         data: {
           employeeNumber,

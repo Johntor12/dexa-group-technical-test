@@ -16,21 +16,37 @@ const employeeSeeds = [
   { email: 'employee.logistic01@pharmawork.test', fullName: 'Fajar Hidayat', department: 'LOGISTIC', position: 'Logistics Coordinator' },
   { email: 'employee.admin.secretary01@pharmawork.test', fullName: 'Maya Lestari', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Administrative Secretary' },
   { email: 'employee.design01@pharmawork.test', fullName: 'Rangga Mahendra', department: 'DESIGN_DEPARTMENT', position: 'Graphic Designer' },
+  { email: 'employee.sales02@pharmawork.test', fullName: 'Aditya Nugraha', department: 'SALES', position: 'Key Account Executive' },
+  { email: 'employee.sales03@pharmawork.test', fullName: 'Shinta Maharani', department: 'SALES', position: 'Sales Representative' },
+  { email: 'employee.sales04@pharmawork.test', fullName: 'Bagas Wicaksono', department: 'SALES', position: 'Sales Operations Associate' },
+  { email: 'employee.marketing02@pharmawork.test', fullName: 'Dewi Anggraini', department: 'MARKETING', position: 'Digital Marketing Specialist' },
+  { email: 'employee.marketing03@pharmawork.test', fullName: 'Rizky Firmansyah', department: 'MARKETING', position: 'Brand Associate' },
+  { email: 'employee.marketing04@pharmawork.test', fullName: 'Putri Anindya', department: 'MARKETING', position: 'Content Strategist' },
+  { email: 'employee.production02@pharmawork.test', fullName: 'Yoga Prasetyo', department: 'PRODUCTION', position: 'Production Supervisor' },
+  { email: 'employee.production03@pharmawork.test', fullName: 'Laras Wulandari', department: 'PRODUCTION', position: 'Quality Control Analyst' },
+  { email: 'employee.production04@pharmawork.test', fullName: 'Ilham Kurniawan', department: 'PRODUCTION', position: 'Production Technician' },
+  { email: 'employee.finance02@pharmawork.test', fullName: 'Nabila Safitri', department: 'FINANCE', position: 'Accounts Payable Officer' },
+  { email: 'employee.finance03@pharmawork.test', fullName: 'Rendi Setiawan', department: 'FINANCE', position: 'Financial Reporting Analyst' },
+  { email: 'employee.finance04@pharmawork.test', fullName: 'Ayu Kusuma', department: 'FINANCE', position: 'Payroll Specialist' },
+  { email: 'employee.hr02@pharmawork.test', fullName: 'Farhan Maulana', department: 'HR', position: 'Talent Acquisition Specialist' },
+  { email: 'employee.hr03@pharmawork.test', fullName: 'Melati Puspita', department: 'HR', position: 'People Operations Associate' },
+  { email: 'employee.hr04@pharmawork.test', fullName: 'Arif Rahman', department: 'HR', position: 'Learning and Development Officer' },
+  { email: 'employee.it02@pharmawork.test', fullName: 'Vina Oktaviani', department: 'IT', position: 'Systems Analyst' },
+  { email: 'employee.it03@pharmawork.test', fullName: 'Kevin Santoso', department: 'IT', position: 'Infrastructure Engineer' },
+  { email: 'employee.it04@pharmawork.test', fullName: 'Dian Pertiwi', department: 'IT', position: 'Application Support Engineer' },
+  { email: 'employee.rnd02@pharmawork.test', fullName: 'Fikri Ramadhan', department: 'R_AND_D', position: 'Laboratory Analyst' },
+  { email: 'employee.rnd03@pharmawork.test', fullName: 'Anisa Maharani', department: 'R_AND_D', position: 'Product Development Associate' },
+  { email: 'employee.rnd04@pharmawork.test', fullName: 'Gilang Permana', department: 'R_AND_D', position: 'Research Scientist' },
+  { email: 'employee.logistic02@pharmawork.test', fullName: 'Tika Amelia', department: 'LOGISTIC', position: 'Inventory Controller' },
+  { email: 'employee.logistic03@pharmawork.test', fullName: 'Hendra Gunawan', department: 'LOGISTIC', position: 'Distribution Planner' },
+  { email: 'employee.logistic04@pharmawork.test', fullName: 'Siti Rahmawati', department: 'LOGISTIC', position: 'Warehouse Coordinator' },
+  { email: 'employee.admin.secretary02@pharmawork.test', fullName: 'Andi Kurnia', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Office Administrator' },
+  { email: 'employee.admin.secretary03@pharmawork.test', fullName: 'Eka Novitasari', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Executive Secretary' },
+  { email: 'employee.admin.secretary04@pharmawork.test', fullName: 'Budi Hartono', department: 'ADMINISTRATION_AND_SECRETARY', position: 'Document Control Officer' },
+  { email: 'employee.design02@pharmawork.test', fullName: 'Cindy Amelia', department: 'DESIGN_DEPARTMENT', position: 'Visual Designer' },
+  { email: 'employee.design03@pharmawork.test', fullName: 'Reza Pahlevi', department: 'DESIGN_DEPARTMENT', position: 'Packaging Designer' },
+  { email: 'employee.design04@pharmawork.test', fullName: 'Nina Kartika', department: 'DESIGN_DEPARTMENT', position: 'Creative Designer' },
 ] as const;
-
-async function moveLegacySeedAccount(oldEmail: string, newEmail: string) {
-  if (oldEmail === newEmail) return;
-  const oldUser = await db.user.findUnique({ where: { email: oldEmail }, select: { id: true } });
-  if (!oldUser) return;
-  const newUser = await db.user.findUnique({ where: { email: newEmail }, select: { id: true } });
-  if (newUser && newUser.id !== oldUser.id) {
-    throw new Error(`Both legacy and replacement seed accounts exist for ${newEmail}; resolve the duplicate before seeding.`);
-  }
-  await db.$transaction(async tx => {
-    await tx.session.updateMany({ where: { userId: oldUser.id, revoked: false }, data: { revoked: true } });
-    if (!newUser) await tx.user.update({ where: { id: oldUser.id }, data: { email: newEmail } });
-  });
-}
 
 try {
   const password = required('SEED_PASSWORD');
@@ -41,14 +57,9 @@ try {
   const employeeEmail = required('SEED_EMPLOYEE_EMAIL');
   const reviewerEmail = process.env.SEED_REVIEWER_EMAIL ?? 'hrd.reviewer.it01@pharmawork.test';
 
-  // Rename only the three known seed identities, preserving their IDs and audit relations.
-  await moveLegacySeedAccount('hrd@example.test', hrdEmail);
-  await moveLegacySeedAccount('employee@example.test', employeeEmail);
-  await moveLegacySeedAccount('reviewer@pharmawork.test', reviewerEmail);
-
   await db.user.upsert({
     where: { email: hrdEmail },
-    update: { role: 'HRD', active: true, passwordHash },
+    update: {},
     create: { email: hrdEmail, passwordHash, role: 'HRD' },
   });
 
@@ -64,7 +75,6 @@ try {
         data: {
           role: 'EMPLOYEE',
           active: true,
-          passwordHash,
           employee: {
             update: {
               fullName: employee.fullName,
@@ -78,15 +88,28 @@ try {
       });
     } else {
       user = await db.$transaction(async (tx) => {
-        const sequence = await tx.employeeNumberSequence.create({ data: {} });
+        const lastSequence = await tx.employeeNumberSequence.aggregate({ _max: { id: true } });
+        let sequenceNumber = (lastSequence._max.id ?? 0) + 1;
+        let allocated = false;
+        while (sequenceNumber <= 9999) {
+          const inserted = await tx.$executeRaw`
+            INSERT IGNORE INTO \`EmployeeNumberSequence\` (\`id\`, \`createdAt\`)
+            VALUES (${sequenceNumber}, NOW())
+          `;
+          if (inserted === 1) {
+            allocated = true;
+            break;
+          }
+          sequenceNumber += 1;
+        }
         const year = new Intl.DateTimeFormat('en', {
           timeZone: 'Asia/Jakarta',
           year: 'numeric',
         }).format(new Date());
-        if (sequence.id > 9999) {
+        if (!allocated) {
           throw new Error('The four-digit company-wide employee number sequence is exhausted.');
         }
-        const employeeNumber = `DEXA-${year}-${departmentNumber[employee.department]}-${String(sequence.id).padStart(4, '0')}`;
+        const employeeNumber = `DEXA-${year}-${departmentNumber[employee.department]}-${String(sequenceNumber).padStart(4, '0')}`;
         const employeeData = {
           employeeNumber,
           fullName: employee.fullName,
@@ -99,7 +122,6 @@ try {
             data: {
               role: 'EMPLOYEE',
               active: true,
-              passwordHash,
               employee: { create: employeeData },
             },
             include: { employee: true },
@@ -120,11 +142,8 @@ try {
 
   const reviewer = await db.user.upsert({
     where: { email: reviewerEmail },
-    update: { role: 'HRD', active: true, passwordHash },
+    update: {},
     create: { email: reviewerEmail, passwordHash, role: 'HRD' },
-  });
-  await db.missedCheckInReviewGrant.deleteMany({
-    where: { userId: reviewer.id, permission: 'MISSED_CHECK_IN_CLAIM_REVIEW', department: { not: 'IT' } },
   });
   await db.missedCheckInReviewGrant.upsert({
     where: {

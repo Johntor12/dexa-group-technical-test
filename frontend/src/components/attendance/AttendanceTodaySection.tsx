@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Attendance, Employee } from "../../lib/api";
 import { departmentLabel } from "../../lib/departments";
 import { DataTable } from "../ui/DataTable";
+import { Button } from "../ui/Button";
 
 interface CheckInRow {
   id: string;
@@ -64,9 +65,9 @@ export function AttendanceTodaySection({
             ini.
           </p>
         </div>
-        <button type="button" onClick={onViewAll}>
+        <Button type="button" variant="primary" size="sm" onClick={onViewAll}>
           Lihat data lengkap
-        </button>
+        </Button>
       </div>
 
       <DataTable<CheckInRow>
@@ -125,25 +126,29 @@ export function AttendanceTodaySection({
           halaman
         </span>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="sm"
             disabled={page <= 1 || loading}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
           >
             Sebelumnya
-          </button>
+          </Button>
           <span className="self-center" aria-live="polite">
             {page} / {totalPages}
           </span>
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="sm"
             disabled={page >= totalPages || loading}
             onClick={() =>
               setPage((current) => Math.min(totalPages, current + 1))
             }
           >
             Berikutnya
-          </button>
+          </Button>
         </div>
       </footer>
     </section>

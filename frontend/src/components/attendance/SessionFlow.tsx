@@ -3,6 +3,7 @@ import {
   AttendanceCaptureForm,
   type AttendanceCaptureBundle,
 } from "./AttendanceCaptureForm";
+import { Button } from "../ui/Button";
 
 export type AttendanceEvidenceImages = Partial<
   Record<
@@ -44,7 +45,7 @@ export function CheckoutConfirmation({
   const hours = Math.floor(elapsed / 3600000);
   const minutes = Math.floor((elapsed % 3600000) / 60000);
   return (
-    <section className="card mx-auto grid max-w-[58vw] gap-[1.2vw] max-lg:max-w-full">
+    <section className="card employee-wfh-flow-container grid gap-[1.2vw]">
       <span className="eyebrow">W F H / CHECK-OUT</span>
       <h2>Check-out WFH</h2>
       <p>Ambil ulang bukti area kerja dan selfie sebelum menutup sesi.</p>
@@ -83,15 +84,17 @@ export function CheckoutConfirmation({
 function EvidenceGrid({
   images,
   phase,
+  className = "",
 }: {
   images: AttendanceEvidenceImages;
   phase: "CHECKIN" | "CHECKOUT" | "ALL";
+  className?: string;
 }) {
   const cards = [
     ...(phase !== "CHECKOUT"
       ? ([
-          ["CHECKIN_WORK_PROOF", "Bukti kerja saat check-in"],
-          ["CHECKIN_SELFIE", "Selfie saat check-in"],
+          ["CHECKIN_WORK_PROOF", "Foto setup kerja saat check-in"],
+          ["CHECKIN_SELFIE", "Foto karyawan saat check-in"],
         ] as const)
       : []),
     ...(phase !== "CHECKIN"
@@ -102,7 +105,7 @@ function EvidenceGrid({
       : []),
   ];
   return (
-    <div className="grid grid-cols-2 gap-[1vw] max-sm:grid-cols-1">
+    <div className={`grid grid-cols-2 gap-[1vw] max-sm:grid-cols-1 ${className}`}>
       {cards.map(([key, label]) =>
         images[key] ? (
           <figure key={key} className="grid gap-2">
@@ -135,7 +138,7 @@ export function SessionCompletion({
   return (
     <section
       role="status"
-      className="card mx-auto grid max-w-[58vw] gap-[1.2vw] max-lg:max-w-full"
+      className="card employee-wfh-flow-container grid gap-[1.2vw]"
     >
       <span className="text-[clamp(2rem,3vw,3rem)] text-[#21653a]">✓</span>
       <h2>{automatic ? "Check-out otomatis selesai" : "Check-out berhasil"}</h2>
@@ -188,32 +191,80 @@ export function CheckInReceipt({
   onDashboard: () => void;
   onHistory: () => void;
 }) {
+  const checkInDate = new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "long",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(attendance.submittedAt));
+  const checkInClock = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(attendance.submittedAt));
+  const hasCheckInPhotos = !!(
+    images.CHECKIN_WORK_PROOF || images.CHECKIN_SELFIE
+  );
+
   return (
     <section
       role="status"
-      className="card mx-auto grid max-w-[58vw] gap-[1.2vw] max-lg:max-w-full"
+      className="checkin-receipt-page employee-wfh-flow-container grid gap-[1.4vw]"
     >
-      <span className="text-[clamp(2rem,3vw,3rem)] text-[#21653a]">✓</span>
-      <h2>Check-in berhasil</h2>
-      <p>
-        Waktu check-in resmi:{" "}
-        <strong>{dateTime(attendance.submittedAt)}</strong>
-      </p>
-      <EvidenceGrid images={images} phase="CHECKIN" />
-      <p className="small muted">
-        Waktu resmi berasal dari server. Tulisan timestamp pada gambar memakai
-        waktu perangkat dan hanya sebagai penanda visual.
-      </p>
-      <p>
-        Perkiraan check-out otomatis:{" "}
-        <strong>{dateTime(attendance.checkOutDueAt)}</strong>
-      </p>
-      <div className="flex flex-wrap gap-[1vw]">
-        <button className="primary" onClick={onDashboard}>
-          Ke dashboard
-        </button>
-        <button onClick={onHistory}>Lihat riwayat</button>
-      </div>
+      <article className="checkin-receipt-card">
+        <span className="checkin-receipt-status">✓ Check-in tercatat</span>
+        <div className="checkin-receipt-time">
+          <span>Waktu check-in resmi</span>
+          <strong>{checkInClock} WIB</strong>
+          <p>{checkInDate} · Waktu server</p>
+        </div>
+        <p className="checkin-receipt-metadata-note">
+          Waktu check-in resmi dicatat oleh server. Timestamp yang tertulis
+          pada foto tidak digunakan sebagai awal durasi WFH.
+        </p>
+        <p className="checkin-receipt-deadline">
+          Batas check-out otomatis:{" "}
+          <strong>
+            {attendance.checkOutDueAt
+              ? dateTime(attendance.checkOutDueAt)
+              : "Belum tersedia"}
+          </strong>{" "}
+          (8 jam sejak check-in).
+        </p>
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          className="checkin-receipt-dashboard-button"
+          onClick={onDashboard}
+        >
+          Ke Dashboard
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="checkin-receipt-history-button"
+          onClick={onHistory}
+        >
+          Lihat riwayat
+        </Button>
+      </article>
+
+      <details className="checkin-receipt-photos">
+        <summary>Lihat Foto Check-in</summary>
+        {hasCheckInPhotos ? (
+          <EvidenceGrid
+            images={images}
+            phase="CHECKIN"
+            className="checkin-receipt-photo-grid"
+          />
+        ) : (
+          <p className="checkin-receipt-no-photos">
+            Foto check-in belum tersedia. Buka riwayat untuk memuat ulang bukti
+            sesi.
+          </p>
+        )}
+      </details>
     </section>
   );
 }

@@ -24,7 +24,12 @@ import { ProfilePage } from "./components/profile/ProfilePage";
 import { RecordsSection } from "./components/records/RecordsSection";
 import { DashboardOverview } from "./components/dashboard/DashboardOverview";
 import { Modal } from "./components/ui/Modal";
-import { CheckoutConfirmation, SessionCompletion, CheckInReceipt } from "./components/attendance/SessionFlow";
+import { Button } from "./components/ui/Button";
+import {
+  CheckoutConfirmation,
+  SessionCompletion,
+  CheckInReceipt,
+} from "./components/attendance/SessionFlow";
 import { MissedCheckInForm } from "./components/attendance/MissedCheckInForm";
 
 type View =
@@ -87,8 +92,10 @@ function routeFor(
 ): { view: View; id?: string } {
   if (path === `${base(role)}/profile`) return { view: "profile" };
   if (role === "EMPLOYEE") {
-    if (path === "/app/check-in" || path === "/app/attendance/new") return { view: "submit" };
-    if (path === "/app/check-in/success" || path === "/app/attendance/success") return { view: "success" };
+    if (path === "/app/check-in" || path === "/app/attendance/new")
+      return { view: "submit" };
+    if (path === "/app/check-in/success" || path === "/app/attendance/success")
+      return { view: "success" };
     if (path === "/app/check-out") return { view: "checkout" };
     if (path === "/app/check-out/success") return { view: "checkout-success" };
     if (path === "/app/check-out/automatic") return { view: "checkout-auto" };
@@ -123,15 +130,38 @@ async function allPages<T>(path: string, token: string): Promise<T[]> {
   return [first, ...rest].flatMap((result) => result.data);
 }
 
-type EvidenceKind = "CHECKIN_WORK_PROOF" | "CHECKIN_SELFIE" | "CHECKOUT_WORK_PROOF" | "CHECKOUT_SELFIE";
-async function loadEvidenceImages(id: string, token: string): Promise<AttendanceEvidenceImages> {
-  const kinds: EvidenceKind[] = ["CHECKIN_WORK_PROOF","CHECKIN_SELFIE","CHECKOUT_WORK_PROOF","CHECKOUT_SELFIE"];
-  const entries = await Promise.all(kinds.map(async (kind) => {
-    try { return [kind, await api<Blob>(`/attendances/${id}/evidence/${kind}`, token)] as const; }
-    catch (error) { if (error instanceof ApiError && error.status === 404) return [kind, null] as const; throw error; }
-  }));
+type EvidenceKind =
+  | "CHECKIN_WORK_PROOF"
+  | "CHECKIN_SELFIE"
+  | "CHECKOUT_WORK_PROOF"
+  | "CHECKOUT_SELFIE";
+async function loadEvidenceImages(
+  id: string,
+  token: string,
+): Promise<AttendanceEvidenceImages> {
+  const kinds: EvidenceKind[] = [
+    "CHECKIN_WORK_PROOF",
+    "CHECKIN_SELFIE",
+    "CHECKOUT_WORK_PROOF",
+    "CHECKOUT_SELFIE",
+  ];
+  const entries = await Promise.all(
+    kinds.map(async (kind) => {
+      try {
+        return [
+          kind,
+          await api<Blob>(`/attendances/${id}/evidence/${kind}`, token),
+        ] as const;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404)
+          return [kind, null] as const;
+        throw error;
+      }
+    }),
+  );
   const images: AttendanceEvidenceImages = {};
-  for (const [kind, blob] of entries) if (blob) images[kind] = URL.createObjectURL(blob);
+  for (const [kind, blob] of entries)
+    if (blob) images[kind] = URL.createObjectURL(blob);
   return images;
 }
 function App() {
@@ -149,7 +179,9 @@ function App() {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [department, setDepartment] = useState<DepartmentCode | "">("");
-  const [employeeStatus, setEmployeeStatus] = useState<"" | "ACTIVE" | "INACTIVE" | "PENDING_ACTIVATION">("");
+  const [employeeStatus, setEmployeeStatus] = useState<
+    "" | "ACTIVE" | "INACTIVE" | "PENDING_ACTIVATION"
+  >("");
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Page<Employee> | null>(null);
   const [attendances, setAttendances] = useState<Page<Attendance> | null>(null);
@@ -184,10 +216,19 @@ function App() {
       setView(next);
       setError("");
       setNotice("");
-      if (next === "attendance" || next === "attendance-today" || next === "claim-review" || next === "employees") {
+      if (
+        next === "attendance" ||
+        next === "attendance-today" ||
+        next === "claim-review" ||
+        next === "employees"
+      ) {
         setPage(1);
         setSearch("");
-        if ((next === "attendance" || next === "attendance-today") && role === "HRD") setDate(current => current || jakartaDate());
+        if (
+          (next === "attendance" || next === "attendance-today") &&
+          role === "HRD"
+        )
+          setDate((current) => current || jakartaDate());
       }
     },
     [],
@@ -206,7 +247,8 @@ function App() {
       setTodayAttendances([]);
       setToday(null);
       setDepartments([]);
-      setImages({});      setLoading(false);
+      setImages({});
+      setLoading(false);
       window.history.replaceState({}, "", "/");
     }
   }, []);
@@ -218,11 +260,17 @@ function App() {
       if (view === "detail") {
         const id = window.location.pathname.split("/").pop();
         const record = await api<Attendance>(`/attendances/${id}`, token);
-        const evidenceImages = record.source === "MISSED_CHECK_IN_CLAIM" ? {} : await loadEvidenceImages(record.id, token);
+        const evidenceImages =
+          record.source === "MISSED_CHECK_IN_CLAIM"
+            ? {}
+            : await loadEvidenceImages(record.id, token);
         if (current === generation.current) {
           setDetail(record);
           setImages(evidenceImages);
-        } else Object.values(evidenceImages).forEach((url) => URL.revokeObjectURL(url));
+        } else
+          Object.values(evidenceImages).forEach((url) =>
+            URL.revokeObjectURL(url),
+          );
       } else if (
         view === "employee-form" &&
         window.location.pathname.endsWith("/edit")
@@ -243,7 +291,10 @@ function App() {
           });
         }
       } else if (view === "employees") {
-        const q = new URLSearchParams({ page: String(page), limit: String(attendanceLimit) });
+        const q = new URLSearchParams({
+          page: String(page),
+          limit: String(attendanceLimit),
+        });
         if (search) q.set("search", search);
         if (department) q.set("department", department);
         if (employeeStatus) q.set("employeeStatus", employeeStatus);
@@ -255,8 +306,12 @@ function App() {
           allPages<Employee>("/employees", token),
           allPages<Attendance>(`/attendances?date=${todayDate}`, token),
         ]);
-        const activeStaff = staff.filter((employee) => employee.active && employee.user.active);
-        const directCheckIns = records.filter((record) => record.source !== "MISSED_CHECK_IN_CLAIM");
+        const activeStaff = staff.filter(
+          (employee) => employee.active && employee.user.active,
+        );
+        const directCheckIns = records.filter(
+          (record) => record.source !== "MISSED_CHECK_IN_CLAIM",
+        );
         if (current === generation.current) {
           setTodayStaff(activeStaff);
           setTodayAttendances(directCheckIns);
@@ -304,10 +359,16 @@ function App() {
             setTodayAttendances(records);
             setStats({
               total: active.length,
-              submitted: active.filter((employee) => submitted.has(employee.id)).length,
-              pending: active.filter((employee) => !submitted.has(employee.id)).length,
-              completed: records.filter(record => !!record.checkOutAt).length,
-running: records.filter(record => !record.checkOutAt && record.source !== 'MISSED_CHECK_IN_CLAIM').length,
+              submitted: active.filter((employee) => submitted.has(employee.id))
+                .length,
+              pending: active.filter((employee) => !submitted.has(employee.id))
+                .length,
+              completed: records.filter((record) => !!record.checkOutAt).length,
+              running: records.filter(
+                (record) =>
+                  !record.checkOutAt &&
+                  record.source !== "MISSED_CHECK_IN_CLAIM",
+              ).length,
             });
           }
         }
@@ -317,17 +378,28 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
         (view === "dashboard" ||
           view === "submit" ||
           view === "attendance" ||
-          view === "success" || view === "checkout" || view === "checkout-success" || view === "checkout-auto")
+          view === "success" ||
+          view === "checkout" ||
+          view === "checkout-success" ||
+          view === "checkout-auto")
       ) {
         const result = await api<Attendance | null>(
           "/attendances/me/today",
           token,
         );
         if (current === generation.current) setToday(result);
-        if ((view === "success" || view === "checkout-success" || view === "checkout-auto") && result) {
+        if (
+          (view === "success" ||
+            view === "checkout-success" ||
+            view === "checkout-auto") &&
+          result
+        ) {
           const evidenceImages = await loadEvidenceImages(result.id, token);
           if (current === generation.current) setImages(evidenceImages);
-          else Object.values(evidenceImages).forEach((url) => URL.revokeObjectURL(url));
+          else
+            Object.values(evidenceImages).forEach((url) =>
+              URL.revokeObjectURL(url),
+            );
         }
       }
     } catch (e) {
@@ -376,9 +448,14 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, [user]);
-  useEffect(() => () => {
-    Object.values(images).forEach((url) => { if (url) URL.revokeObjectURL(url); });
-  }, [images]);
+  useEffect(
+    () => () => {
+      Object.values(images).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    },
+    [images],
+  );
   async function login(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -421,7 +498,8 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
       setDate("");
       setDepartment("");
       setEmployeeStatus("");
-      setToday(null);      setImages({});
+      setToday(null);
+      setImages({});
       setNotice("");
       setError("");
       window.history.replaceState({}, "", "/");
@@ -440,7 +518,10 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
         Employee & { activation?: { token: string; expiresAt: string } }
       >(`/employees${editing ? `/${editing}` : ""}`, token, {
         method: editing ? "PATCH" : "POST",
-        body: JSON.stringify(({ employeeNumber: _employeeNumber, ...employeeData } = form) => employeeData),
+        body: JSON.stringify(
+          ({ employeeNumber: _employeeNumber, ...employeeData } = form) =>
+            employeeData,
+        ),
       });
       const message = editing
         ? "Data karyawan diperbarui."
@@ -557,14 +638,30 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
       setBusy(false);
     }
   }
-  async function submitMissedCheckIn(values: { workDate: string; claimedCheckInTime: string; claimedCheckOutTime: string; reason: string; truthConfirmed: boolean }) {
-    setBusy(true); setError("");
+  async function submitMissedCheckIn(values: {
+    workDate: string;
+    claimedCheckInTime: string;
+    claimedCheckOutTime: string;
+    reason: string;
+    truthConfirmed: boolean;
+  }) {
+    setBusy(true);
+    setError("");
     try {
-      const claim = await api<{ id: string }>("/attendance-claims", token, { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify(values) });
-      setNotice(`Klaim check-in dikirim untuk ditinjau. Referensi: ${claim.id}`);
+      const claim = await api<{ id: string }>("/attendance-claims", token, {
+        method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify(values),
+      });
+      setNotice(
+        `Klaim check-in dikirim untuk ditinjau. Referensi: ${claim.id}`,
+      );
       navigate("attendance", "EMPLOYEE");
-    } catch (e) { report(e); }
-    finally { setBusy(false); }
+    } catch (e) {
+      report(e);
+    } finally {
+      setBusy(false);
+    }
   }
   function edit(employee: Employee) {
     setEditing(employee.id);
@@ -614,14 +711,19 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
     view === "attendance-today" || view === "claim-review"
       ? view
       : view === "employees" || view === "employee-form"
-      ? "employees"
-      : view === "dashboard" ||
-          (user.role === "EMPLOYEE" &&
-          (view === "submit" || view === "success" || view === "checkout" || view === "checkout-success" || view === "checkout-auto" || view === "missed-checkin"))
-        ? "dashboard"
-        : view === "profile"
-          ? "profile"
-          : "attendance";
+        ? "employees"
+        : view === "dashboard" ||
+            (user.role === "EMPLOYEE" &&
+              (view === "submit" ||
+                view === "success" ||
+                view === "checkout" ||
+                view === "checkout-success" ||
+                view === "checkout-auto" ||
+                view === "missed-checkin"))
+          ? "dashboard"
+          : view === "profile"
+            ? "profile"
+            : "attendance";
   const title =
     view === "employees"
       ? "Data Karyawan"
@@ -629,27 +731,31 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
         ? "Check-in Hari Ini"
         : view === "claim-review"
           ? "Review Klaim Absensi"
-      : view === "employee-form"
-        ? editing
-          ? "Ubah Karyawan"
-          : "Tambah Karyawan"
-        : view === "dashboard"
-          ? user.role === "HRD" ? "Dashboard HRD" : "Dashboard"
-        : view === "submit"
-            ? "Check-in"
-            : view === "checkout"
-              ? "Check-out"
-              : view === "missed-checkin"
-                ? "Klaim lupa check-in"
-                : view === "success"
-                  ? "Check-in berhasil"
-              : view === "profile"
-                ? "Profil saya"
-                : view === "detail"
-                  ? "Detail absensi"
-                  : user.role === "HRD"
-                    ? view === "attendance" ? "Monitoring WFH" : "Monitoring Absensi"
-                    : "Riwayat absensi";
+          : view === "employee-form"
+            ? editing
+              ? "Ubah Karyawan"
+              : "Tambah Karyawan"
+            : view === "dashboard"
+              ? user.role === "HRD"
+                ? "Dashboard HRD"
+                : "Dashboard"
+              : view === "submit"
+                ? "Check-in"
+                : view === "checkout"
+                  ? "Check-out"
+                  : view === "missed-checkin"
+                    ? "Klaim lupa check-in"
+                    : view === "success"
+                      ? "Check-in berhasil"
+                      : view === "profile"
+                        ? "Profil saya"
+                        : view === "detail"
+                          ? "Detail absensi"
+                          : user.role === "HRD"
+                            ? view === "attendance"
+                              ? "Monitoring WFH"
+                              : "Monitoring Absensi"
+                            : "Riwayat absensi";
   return (
     <div className="workspace">
       <WorkspaceSidebar
@@ -695,51 +801,100 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
             </button>
           </div>
         </div>
-        {!(user.role === "EMPLOYEE" && view === "submit") && !(user.role === "HRD" && view === "employee-form") && view !== "detail" && <header className="page-heading">
-          <div>
-            {user.role === "EMPLOYEE" && view === "dashboard" ? (
-              <>
-                <h1>Selamat datang, {user.employee?.fullName ?? "Karyawan"}</h1>
-                <p className="muted">
-                  Siap bekerja hari ini? Kirim absensi WFH Anda dengan foto
-                  setup kerja dan lokasi.
-                </p>
-              </>
-            ) : (
-              <>
-                <span className="eyebrow">
-                  PHARMAWORK /{" "}
-                  {user.role === "HRD" ? "PEOPLE OPERATIONS" : "MY WORKSPACE"}
-                </span>
-                <h1>{title}</h1>
-                <p className="muted">
-                  {view === "dashboard" && user.role === "HRD"
-                    ? `${new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date())} · Pembaruan ${new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date())} WIB`
-                    : view === "employees" ? "Kelola informasi dan akses karyawan." : view === "employee-form" ? "Lengkapi data karyawan dan informasi akunnya." : view === "attendance-today" ? "Lihat karyawan yang sudah dan belum check-in WFH hari ini." : view === "claim-review" ? "Tinjau klaim karyawan yang lupa check-in pada tanggal sebelumnya." : view === "attendance" && user.role === "HRD" ? "Pantau seluruh sesi check-in dan check-out karyawan." : "Kehadiran WFH tercatat berdasarkan waktu server."}
-                </p>
-              </>
-            )}
-          </div>
-          {view === "employees" && (
-            <button
-              className="primary"
-              onClick={() => {
-                setForm({
-                  ...emptyForm,
-                  department: departments[0]?.code ?? "",
-                });
-                setEditing(null);
-                setEditingEmployee(null);
-                setEmployeeActive(true);
-                setEmployeeLoginActive(false);
-                navigate("employee-form", "HRD");
-              }}
-            >
-              + Tambah Karyawan
-            </button>
+        {!(user.role === "EMPLOYEE" && view === "submit") &&
+          !(user.role === "HRD" && view === "employee-form") &&
+          view !== "detail" && (
+            <header className="page-heading">
+              <div>
+                {user.role === "EMPLOYEE" && view === "dashboard" ? (
+                  <>
+                    <h1>
+                      Selamat datang, {user.employee?.fullName ?? "Karyawan"}
+                    </h1>
+                    <p className="muted">
+                      Siap bekerja hari ini? Kirim absensi WFH Anda dengan foto
+                      setup kerja dan lokasi.
+                    </p>
+                  </>
+                ) : view === "success" ? (
+                  <>
+                    <p className="checkin-success-date">
+                      {new Intl.DateTimeFormat("id-ID", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        timeZone: "Asia/Jakarta",
+                      }).format(new Date(today?.submittedAt ?? Date.now()))}
+                      {" · "}
+                      {new Intl.DateTimeFormat("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hourCycle: "h23",
+                        timeZone: "Asia/Jakarta",
+                      }).format(new Date(today?.submittedAt ?? Date.now()))}
+                      {" WIB"}
+                    </p>
+                    <h1>Check-in berhasil</h1>
+                    <p className="muted">
+                      Catatan waktu WFH Anda tersimpan dengan jelas.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="eyebrow">
+                      PHARMAWORK /{" "}
+                      {user.role === "HRD"
+                        ? "PEOPLE OPERATIONS"
+                        : "MY WORKSPACE"}
+                    </span>
+                    <h1>{title}</h1>
+                    <p className="muted">
+                      {view === "dashboard" && user.role === "HRD"
+                        ? `${new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date())} · Pembaruan ${new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date())} WIB`
+                        : view === "employees"
+                          ? "Kelola informasi dan akses karyawan."
+                          : view === "employee-form"
+                            ? "Lengkapi data karyawan dan informasi akunnya."
+                            : view === "attendance-today"
+                              ? "Lihat karyawan yang sudah dan belum check-in WFH hari ini."
+                              : view === "claim-review"
+                                ? "Tinjau klaim karyawan yang lupa check-in pada tanggal sebelumnya."
+                                : view === "attendance" && user.role === "HRD"
+                                  ? "Pantau seluruh sesi check-in dan check-out karyawan."
+                                  : "Kehadiran WFH tercatat berdasarkan waktu server."}
+                    </p>
+                  </>
+                )}
+              </div>
+              {view === "employees" && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="whitespace-nowrap"
+                  onClick={() => {
+                    setForm({
+                      ...emptyForm,
+                      department: departments[0]?.code ?? "",
+                    });
+                    setEditing(null);
+                    setEditingEmployee(null);
+                    setEmployeeActive(true);
+                    setEmployeeLoginActive(false);
+                    navigate("employee-form", "HRD");
+                  }}
+                >
+                  + Tambah Karyawan
+                </Button>
+              )}
+              {view === "dashboard" && user.role === "HRD" && (
+                <button onClick={() => navigate("claim-review", "HRD")}>
+                  Review Klaim
+                </button>
+              )}
+            </header>
           )}
-          {view === "dashboard" && user.role === "HRD" && <button onClick={() => navigate("claim-review", "HRD")}>Review Klaim</button>}
-        </header>}
         {error && (
           <div role="alert" className="alert error">
             {error}
@@ -760,7 +915,18 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
             onDetail={openDetail}
             onMissedCheckIn={() => navigate("missed-checkin", "EMPLOYEE")}
             onNavigate={() =>
-              navigate(user.role === "EMPLOYEE" ? (!today ? "submit" : today.checkOutType === "AUTO" ? "checkout-auto" : today.checkOutAt ? "attendance" : "checkout") : "attendance-today", user.role)
+              navigate(
+                user.role === "EMPLOYEE"
+                  ? !today
+                    ? "submit"
+                    : today.checkOutType === "AUTO"
+                      ? "checkout-auto"
+                      : today.checkOutAt
+                        ? "attendance"
+                        : "checkout"
+                  : "attendance-today",
+                user.role,
+              )
             }
             formatTime={time}
           />
@@ -777,11 +943,42 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
           />
         )}
         {view === "success" && today && (
-          <CheckInReceipt attendance={today} images={images} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />
+          <CheckInReceipt
+            attendance={today}
+            images={images}
+            onDashboard={() => navigate("dashboard", "EMPLOYEE")}
+            onHistory={() => navigate("attendance", "EMPLOYEE")}
+          />
         )}
-        {view === "checkout" && today && !today.checkOutAt && <CheckoutConfirmation attendance={today} busy={busy} loading={loading} keyRef={key} onConfirm={checkOut} onCancel={() => navigate("dashboard", "EMPLOYEE")} />}
-        {(view === "checkout-success" || view === "checkout-auto") && today?.checkOutAt && <SessionCompletion attendance={today} automatic={view === "checkout-auto" || today.checkOutType === "AUTO"} images={images} onDashboard={() => navigate("dashboard", "EMPLOYEE")} onHistory={() => navigate("attendance", "EMPLOYEE")} />}
-        {view === "missed-checkin" && <MissedCheckInForm busy={busy} onSubmit={submitMissedCheckIn} onCancel={() => navigate("dashboard", "EMPLOYEE")} />}
+        {view === "checkout" && today && !today.checkOutAt && (
+          <CheckoutConfirmation
+            attendance={today}
+            busy={busy}
+            loading={loading}
+            keyRef={key}
+            onConfirm={checkOut}
+            onCancel={() => navigate("dashboard", "EMPLOYEE")}
+          />
+        )}
+        {(view === "checkout-success" || view === "checkout-auto") &&
+          today?.checkOutAt && (
+            <SessionCompletion
+              attendance={today}
+              automatic={
+                view === "checkout-auto" || today.checkOutType === "AUTO"
+              }
+              images={images}
+              onDashboard={() => navigate("dashboard", "EMPLOYEE")}
+              onHistory={() => navigate("attendance", "EMPLOYEE")}
+            />
+          )}
+        {view === "missed-checkin" && (
+          <MissedCheckInForm
+            busy={busy}
+            onSubmit={submitMissedCheckIn}
+            onCancel={() => navigate("dashboard", "EMPLOYEE")}
+          />
+        )}
         {view === "profile" && (
           <ProfilePage
             user={user}
@@ -869,7 +1066,10 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
               setDepartment(value);
               setPage(1);
             }}
-            onEmployeeStatusChange={(value) => { setEmployeeStatus(value); setPage(1); }}
+            onEmployeeStatusChange={(value) => {
+              setEmployeeStatus(value);
+              setPage(1);
+            }}
             onPageChange={(value) => {
               setPage(value);
               requestAnimationFrame(() =>
@@ -882,7 +1082,11 @@ running: records.filter(record => !record.checkOutAt && record.source !== 'MISSE
           />
         )}
         {view === "attendance" && user.role === "EMPLOYEE" && (
-          <MissedCheckInClaimsPanel token={token} user={user} onChanged={reload} />
+          <MissedCheckInClaimsPanel
+            token={token}
+            user={user}
+            onChanged={reload}
+          />
         )}
         {view === "claim-review" && user.role === "HRD" && (
           <MissedCheckInClaimsPanel

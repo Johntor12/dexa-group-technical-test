@@ -1,4 +1,5 @@
 import { DataTable } from '../ui/DataTable'
+import { Button } from '../ui/Button'
 import type {
   User,
   Employee,
@@ -144,18 +145,24 @@ export function RecordsSection({
       <footer className="pagination">
         <div className="pagination-summary"><span>{meta?.total ?? 0} data · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span>{(view === 'attendance' || view === 'employees') && user.role === 'HRD' && <label className="page-size-select">Tampilkan<select aria-label="Jumlah data per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>}</div>
         <div>
-          <button
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
             disabled={page <= 1 || loading}
             onClick={() => onPageChange(page - 1)}
           >
             Sebelumnya
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
             disabled={page >= (meta?.totalPages ?? 1) || loading}
             onClick={() => onPageChange(page + 1)}
           >
             Berikutnya
-          </button>
+          </Button>
         </div>
       </footer>
     </section>
