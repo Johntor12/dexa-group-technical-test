@@ -107,6 +107,7 @@ export class AttendanceService {
           : {}),
       ...(q.date ? { workDate: q.date } : {}),
       ...(q.department ? { department: q.department } : {}),
+      ...(q.source ? { source: q.source } : {}),
       ...(q.search
         ? {
             OR: [

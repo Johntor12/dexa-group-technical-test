@@ -321,6 +321,7 @@ function App() {
         });
         if (search && view === "attendance") q.set("search", search);
         if (date && view === "attendance") q.set("date", date);
+        if (view === "attendance" && user.role === "HRD") q.set("source", "DIRECT");
         if (department && view === "attendance")
           q.set("department", department);
         const attendanceRequest = api<Page<Attendance>>(

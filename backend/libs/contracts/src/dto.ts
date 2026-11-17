@@ -86,6 +86,10 @@ export class ListDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'INACTIVE', 'PENDING_ACTIVATION'])
   employeeStatus?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+  @ApiPropertyOptional({ enum: ['DIRECT', 'MISSED_CHECK_IN_CLAIM'] })
+  @IsOptional()
+  @IsIn(['DIRECT', 'MISSED_CHECK_IN_CLAIM'])
+  source?: 'DIRECT' | 'MISSED_CHECK_IN_CLAIM';
 }
 export class IdDto {
   @IsUUID() id!: string;

@@ -136,7 +136,35 @@ export function RecordsSection({
        { key: 'department', header: 'Departemen', cell: e => departmentLabel(e.department) },
        { key: 'status', header: 'Status', cell: e => e.active && !e.user.active ? <span className="employee-status pending">Menunggu aktivasi</span> : <span className={`employee-status ${e.active ? 'active' : 'inactive'}`}><span aria-hidden="true">{e.active ? '✓' : '×'}</span>{e.active ? 'Aktif' : 'Nonaktif'}</span> },
        { key: 'actions', header: 'Aksi', cell: e => <div className="row-actions employee-actions"><button className="edit-action" disabled={busy} onClick={() => onEdit(e)}>Edit</button></div> }
-      ]} /> : <DataTable<Attendance> caption="Riwayat kehadiran" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada absensi sesuai filter." columns={[
+      ]} /> : view === 'attendance' && user.role === 'HRD' ? <section className="grid gap-[2vw]">
+        <section className="rounded-xl border border-slate-200 bg-white p-[1.5vw] max-sm:p-[4vw]">
+          <div className="mb-[1.2vw] flex flex-wrap items-end justify-between gap-[1vw]">
+            <div><h3 className="text-[clamp(1.25rem,1.55vw,1.7rem)] font-bold text-slate-900">Sudah Check-in · {date || 'hari ini'}</h3><p className="mt-1 text-sm text-slate-600">Sesi WFH yang tercatat pada tanggal yang dipilih.</p></div>
+            <label className="page-size-select">Tampilkan<select aria-label="Jumlah data check-in per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>
+          </div>
+          <DataTable<Attendance> caption="Karyawan yang sudah check-in" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada karyawan yang check-in pada tanggal ini." columns={[
+       { key: 'employee', header: 'Karyawan', cell: a => <><strong>{a.employeeName}</strong><span className="cell-secondary">{a.employeeNumber}</span></> },
+       { key: 'department', header: 'Departemen', cell: a => departmentLabel(a.department) },
+       { key: 'checkin', header: 'Check-in', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? '—' : clock(a.submittedAt) },
+       { key: 'checkout', header: 'Check-out', cell: a => clock(a.checkOutAt) },
+       { key: 'duration', header: 'Durasi', cell: a => duration(a) },
+       { key: 'source', header: 'Sumber / Status', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? <span className="status">Klaim check-in disetujui</span> : a.checkOutType === 'AUTO' ? <span className="checkout-auto-label">Otomatis</span> : a.checkOutAt ? 'Manual' : 'Sesi aktif' },
+       { key: 'evidence', header: 'Detail', cell: a => <button className="detail-action" disabled={busy} onClick={() => void onEvidence(a.id)}>Lihat Detail</button> }
+          ]} />
+          <footer className="pagination mt-[1vw]">
+            <div className="pagination-summary"><span>{meta?.total ?? 0} karyawan · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span></div>
+            <div className="flex gap-[0.5vw]"><Button type="button" variant="primary" size="sm" disabled={page <= 1 || loading} onClick={() => onPageChange(page - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={page >= (meta?.totalPages ?? 1) || loading} onClick={() => onPageChange(page + 1)}>Berikutnya</Button></div>
+          </footer>
+        </section>
+        <section className="rounded-xl border border-slate-200 bg-white p-[1.5vw] max-sm:p-[4vw]">
+          <div className="mb-[1.2vw]"><h3 className="text-[clamp(1.25rem,1.55vw,1.7rem)] font-bold text-slate-900">Belum Check-in · {date || 'hari ini'}</h3><p className="mt-1 text-sm text-slate-600">Karyawan aktif yang belum memiliki catatan WFH pada tanggal yang dipilih.</p></div>
+          <DataTable<Employee> caption="Karyawan yang belum check-in" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Semua karyawan sudah memiliki catatan pada tanggal ini." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Belum check-in</span> }]} />
+          <footer className="pagination mt-[1vw]">
+            <div className="pagination-summary"><span>{missingEmployees?.meta.total ?? 0} karyawan · Halaman {missingPage} dari {Math.max(1, missingEmployees?.meta.totalPages ?? 1)}</span></div>
+            <div className="flex gap-[0.5vw]"><Button type="button" variant="primary" size="sm" disabled={missingPage <= 1 || loading} onClick={() => onMissingPageChange(missingPage - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={missingPage >= (missingEmployees?.meta.totalPages ?? 1) || loading} onClick={() => onMissingPageChange(missingPage + 1)}>Berikutnya</Button></div>
+          </footer>
+        </section>
+      </section> : <DataTable<Attendance> caption="Riwayat kehadiran" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada absensi sesuai filter." columns={[
        { key: 'employee', header: 'Karyawan', cell: a => <><strong>{a.employeeName}</strong><span className="cell-secondary">{a.employeeNumber}</span></> },
        { key: 'department', header: 'Departemen', cell: a => departmentLabel(a.department) },
        { key: 'checkin', header: 'Check-in', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? '—' : clock(a.submittedAt) },
@@ -145,8 +173,7 @@ export function RecordsSection({
        { key: 'source', header: 'Sumber / Status', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? <span className="status">Klaim check-in disetujui</span> : a.checkOutType === 'AUTO' ? <span className="checkout-auto-label">Otomatis</span> : a.checkOutAt ? 'Manual' : 'Sesi aktif' },
        { key: 'evidence', header: 'Detail', cell: a => <button className="detail-action" disabled={busy} onClick={() => void onEvidence(a.id)}>Lihat Detail</button> }
       ]} />}
-      {user.role === 'HRD' && view === 'attendance' && <div className="mt-[2vw]"><h3 className="mb-[1vw] font-semibold">Belum tercatat pada {date || 'hari ini'} (jadwal belum diverifikasi)</h3><DataTable<Employee> caption="Karyawan tanpa catatan absensi" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Tidak ada karyawan tanpa catatan sesuai filter." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Perlu verifikasi jadwal</span> }]} /><div className="mt-3 flex items-center justify-between text-sm text-slate-600"><span>{missingEmployees?.meta.total ?? 0} data · Halaman {missingPage} dari {Math.max(1, missingEmployees?.meta.totalPages ?? 1)}</span><div className="flex gap-2"><Button type="button" variant="primary" size="sm" disabled={missingPage <= 1 || loading} onClick={() => onMissingPageChange(missingPage - 1)}>Sebelumnya</Button><Button type="button" variant="primary" size="sm" disabled={missingPage >= (missingEmployees?.meta.totalPages ?? 1) || loading} onClick={() => onMissingPageChange(missingPage + 1)}>Berikutnya</Button></div></div></div>}
-      <footer className="pagination">
+      {!(user.role === 'HRD' && view === 'attendance') && <footer className="pagination">
         <div className="pagination-summary"><span>{meta?.total ?? 0} data · Halaman {page} dari {Math.max(1, meta?.totalPages ?? 1)}</span>{(view === 'attendance' || view === 'employees') && user.role === 'HRD' && <label className="page-size-select">Tampilkan<select aria-label="Jumlah data per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>}</div>
         <div>
           <Button
@@ -168,7 +195,7 @@ export function RecordsSection({
             Berikutnya
           </Button>
         </div>
-      </footer>
+      </footer>}
     </section>
   );
 }
