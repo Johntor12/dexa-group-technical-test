@@ -379,6 +379,12 @@
   .employee-dashboard {
     @apply max-w-full;
   }
+  .employee-dashboard-today-card {
+    @apply grid gap-[1.4vw];
+  }
+  .employee-dashboard-actions {
+    @apply flex flex-wrap items-center gap-[1.2vw];
+  }
   .attendance-submit-page {
     @apply w-full;
   }
@@ -1397,7 +1403,7 @@
       @apply mb-0;
     }
     .employee-dashboard-today-card {
-      @apply grid gap-[3vw] rounded-[2vw] border-t-[0.8vw] p-[4vw];
+      @apply grid gap-[4vw] rounded-[2vw] border-t-[0.8vw] p-[4vw];
     }
     .employee-dashboard-today-card h2 {
       @apply text-[5.2vw] leading-tight;
@@ -1409,7 +1415,7 @@
       @apply mt-0 text-[4vw] leading-relaxed;
     }
     .employee-dashboard-actions {
-      @apply grid gap-[2vw];
+      @apply grid gap-[3vw];
     }
     .employee-dashboard-actions button {
       @apply min-h-[12vw] w-full rounded-[1.5vw] px-[4vw] py-[3vw] text-[4vw];
