@@ -531,7 +531,37 @@
     @apply mb-[0.7vw] justify-end;
   }
   .records .section-title button {
-    @apply border-0 bg-transparent p-[0.3vw] text-[clamp(0.78rem,0.9vw,0.9rem)] text-dexa-muted;
+    @apply rounded-full border border-dexa-border bg-white px-[1vw] py-[0.55vw] text-[clamp(0.82rem,0.95vw,0.95rem)] font-semibold text-dexa-muted shadow-sm transition hover:border-dexa-red/30 hover:bg-[#fff8f8] hover:text-dexa-red;
+  }
+  .records .filters input,
+  .records .filters select {
+    @apply min-h-[3vw] rounded-xl border-dexa-border px-[1vw] py-[0.7vw] shadow-sm transition placeholder:text-dexa-muted focus:border-dexa-red focus:outline-none focus:ring-2 focus:ring-dexa-red/15;
+  }
+  .records .filters select.is-placeholder {
+    @apply text-dexa-muted;
+  }
+  .records .filters select.has-value {
+    @apply text-dexa-ink;
+  }
+  .date-filter-control {
+    @apply relative block;
+  }
+  .records .filters .date-filter-control input {
+    @apply w-full;
+  }
+  .date-filter-placeholder {
+    @apply pointer-events-none absolute left-[1vw] top-1/2 -translate-y-1/2 text-dexa-muted;
+  }
+  .date-filter-control:not(.has-value):not(:focus-within) input::-webkit-datetime-edit {
+    color: transparent;
+  }
+  .date-filter-control:focus-within .date-filter-placeholder,
+  .date-filter-control.has-value .date-filter-placeholder {
+    display: none;
+  }
+  .records .pagination button,
+  .records .detail-action {
+    @apply rounded-full;
   }
   .records table th {
     @apply normal-case tracking-normal;
@@ -1027,7 +1057,7 @@
       @apply w-full;
     }
     .sidebar {
-      @apply fixed inset-x-0 bottom-0 top-auto z-50 flex h-auto w-full flex-col gap-0 border-0 border-t border-dexa-border bg-white px-[2vw] pb-[env(safe-area-inset-bottom)] pt-[1vw] text-dexa-ink shadow-[0_-4px_16px_rgba(23,36,43,0.08)];
+      @apply fixed inset-x-0 bottom-0 top-auto z-50 flex h-auto w-full flex-col gap-0 border-0 border-t border-[#8f211d] bg-[#A52823] px-[2vw] pb-[env(safe-area-inset-bottom)] pt-[1vw] text-white shadow-[0_-4px_16px_rgba(23,36,43,0.18)];
     }
     .sidebar-heading,
     .sidebar .nav-label,
@@ -1046,20 +1076,20 @@
     }
     .sidebar nav button,
     .sidebar nav .sidebar-nav-group > button {
-      @apply flex min-h-[14vw] w-full flex-col justify-center gap-[1vw] rounded-[1.5vw] border-0 bg-transparent px-[1vw] py-[1vw] text-center text-[3.2vw] leading-tight text-dexa-muted;
+      @apply flex min-h-[14vw] w-full flex-col justify-center gap-[1vw] rounded-[1.5vw] border-0 bg-transparent px-[1vw] py-[1vw] text-center text-[3.2vw] leading-tight text-white/90;
     }
     .sidebar nav button img,
     .sidebar nav .nav-symbol {
       @apply h-[5vw] w-[5vw];
     }
     .sidebar nav button img {
-      filter: none;
+      filter: brightness(0) invert(1);
     }
     .sidebar nav .sidebar-chevron {
       @apply hidden;
     }
     .sidebar nav button[aria-current] {
-      @apply bg-transparent text-dexa-red shadow-none;
+      @apply bg-white/15 text-white shadow-none;
     }
     .sidebar-collapsed {
       @apply w-full px-[2vw];
@@ -1080,7 +1110,7 @@
       @apply text-dexa-red;
     }
     .sidebar .nav-symbol {
-      @apply text-dexa-red;
+      @apply text-white;
     }
     .sidebar-nav-group {
       position: static;
@@ -1089,7 +1119,7 @@
       @apply flex-1 text-left;
     }
     .sidebar nav button:hover {
-      @apply bg-dexa-bg text-dexa-red;
+      @apply bg-white/15 text-white;
     }
     .hr-summary-grid {
       @apply grid-cols-1 gap-[3vw];
@@ -1149,6 +1179,16 @@
     }
     .filters label {
       @apply min-w-0;
+    }
+    .records .filters input,
+    .records .filters select {
+      @apply min-h-[11vw] rounded-[2.5vw] px-[3.5vw] py-[2.5vw];
+    }
+    .date-filter-placeholder {
+      @apply left-[3.5vw];
+    }
+    .records .section-title button {
+      @apply min-h-[10vw] px-[4vw] py-[2.5vw];
     }
     .records .section-title {
       @apply mb-[3vw];

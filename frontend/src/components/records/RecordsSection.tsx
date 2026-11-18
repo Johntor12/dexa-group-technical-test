@@ -86,9 +86,9 @@ export function RecordsSection({
       {view === 'attendance' && user.role === 'HRD' && <p className="small muted attendance-sort-note">Diurutkan berdasarkan waktu absensi terbaru.</p>}
       <div className="filters">
         <label>
-          Cari
+          Karyawan
           <input
-            placeholder={view === 'employees' ? 'Cari nama atau ID karyawan' : 'Cari nama atau ID karyawan'}
+            placeholder="Nama atau ID karyawan"
             value={search}
             onChange={(e) => {
               onSearchChange(e.target.value);
@@ -98,25 +98,31 @@ export function RecordsSection({
         {view === "attendance" && (
           <label>
             Tanggal
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => {
-                onDateChange(e.target.value);
-              }}
-            />
+            <span className={`date-filter-control ${date ? 'has-value' : ''}`}>
+              <input
+                type="date"
+                aria-label="Pilih tanggal"
+                value={date}
+                onChange={(e) => {
+                  onDateChange(e.target.value);
+                }}
+              />
+              {!date && <span className="date-filter-placeholder" aria-hidden="true">Pilih tanggal</span>}
+            </span>
           </label>
         )}
         {user.role === "HRD" && (
           <label>
             Departemen
             <select
+              className={department ? 'has-value' : 'is-placeholder'}
+              aria-label="Pilih departemen"
               value={department}
               onChange={(e) => {
                 onDepartmentChange(e.target.value as DepartmentCode | '');
               }}
             >
-              <option value="">Semua departemen</option>
+              <option value="">Pilih departemen · semua</option>
               {departments.map((d) => (
                 <option key={d.code} value={d.code}>
                   {d.name}
@@ -125,7 +131,7 @@ export function RecordsSection({
             </select>
           </label>
         )}
-        {view === 'employees' && <label>Status<select aria-label="Filter status karyawan" value={employeeStatus} onChange={e => onEmployeeStatusChange(e.target.value as typeof employeeStatus)}><option value="">Semua status</option><option value="ACTIVE">Aktif</option><option value="PENDING_ACTIVATION">Menunggu aktivasi</option><option value="INACTIVE">Nonaktif</option></select></label>}
+        {view === 'employees' && <label>Status<select className={employeeStatus ? 'has-value' : 'is-placeholder'} aria-label="Pilih status karyawan" value={employeeStatus} onChange={e => onEmployeeStatusChange(e.target.value as typeof employeeStatus)}><option value="">Pilih status · semua</option><option value="ACTIVE">Aktif</option><option value="PENDING_ACTIVATION">Menunggu aktivasi</option><option value="INACTIVE">Nonaktif</option></select></label>}
       </div>
       <div aria-live="polite">
         {loading && <p className="muted">Memuat data...</p>}

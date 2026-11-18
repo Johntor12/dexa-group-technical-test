@@ -19,6 +19,7 @@ const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
 app.enableCors({
   origin: corsOrigins,
   exposedHeaders: ['X-Request-Id'],
+  maxAge: 600,
 });
 app.use((req: ApiRequest, res: Response, next: NextFunction) => {
   req.requestId = randomUUID();

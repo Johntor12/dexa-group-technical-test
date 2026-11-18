@@ -18,9 +18,35 @@ module.exports = (_env, argv) => {
     );
   }
 
-  if (isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/)/i.test(apiUrl)) {
+  let parsedApiUrl;
+  try {
+    parsedApiUrl = new URL(apiUrl);
+  } catch {
+    throw new Error("API_URL must be a valid absolute HTTP or HTTPS URL.");
+  }
+
+  const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+    parsedApiUrl.hostname,
+  );
+  if (parsedApiUrl.username || parsedApiUrl.password) {
+    throw new Error("API_URL must not contain credentials.");
+  }
+
+  if (isProduction && isLoopback) {
     throw new Error(
       "Production API_URL cannot point to localhost. Set it to the deployed backend URL in Vercel, then redeploy.",
+    );
+  }
+
+  if (isProduction && parsedApiUrl.protocol !== "https:") {
+    throw new Error(
+      "Production API_URL must use HTTPS so passwords and session tokens are encrypted in transit.",
+    );
+  }
+
+  if (!isProduction && parsedApiUrl.protocol !== "https:" && !isLoopback) {
+    throw new Error(
+      "Non-local API_URL must use HTTPS. HTTP is allowed only for localhost development.",
     );
   }
 

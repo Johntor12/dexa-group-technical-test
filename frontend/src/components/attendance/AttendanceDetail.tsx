@@ -33,9 +33,7 @@ export function AttendanceDetail({
   const missedCheckInClaim = attendance.source === "MISSED_CHECK_IN_CLAIM";
   const checkoutLabel = attendance.checkOutAt
     ? clock(attendance.checkOutAt) + " WIB"
-    : attendance.checkOutDueAt
-      ? "Belum · estimasi " + formatTime(attendance.checkOutDueAt) + " WIB"
-      : "Belum tercatat";
+    : "Belum";
   const totalMinutes = Math.max(
     0,
     Math.floor(
@@ -105,17 +103,13 @@ export function AttendanceDetail({
                 : "Check-out"}
           </span>
           <strong className="metric-checkout">{checkoutLabel}</strong>
-          <small>
-            {attendance.checkOutType === "AUTO" && attendance.checkOutRecordedAt
-              ? "Sistem mencatat pada " +
-                formatTime(attendance.checkOutRecordedAt) +
-                " WIB"
-              : attendance.checkOutAt
-                ? "Sesi WFH selesai"
-                : attendance.checkOutDueAt
-                  ? "Otomatis setelah 8 jam dari check-in"
-                  : "Sesi belum ditutup"}
-          </small>
+          {attendance.checkOutType === "AUTO" && attendance.checkOutRecordedAt ? (
+            <small>
+              Sistem mencatat pada {formatTime(attendance.checkOutRecordedAt)} WIB
+            </small>
+          ) : attendance.checkOutAt ? (
+            <small>Sesi WFH selesai</small>
+          ) : null}
         </article>
         <article>
           <span>Durasi WFH</span>

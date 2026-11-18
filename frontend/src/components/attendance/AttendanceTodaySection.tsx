@@ -48,12 +48,11 @@ export function AttendanceTodaySection({
   const totalPages = Math.max(1, meta.totalPages);
   const firstItem = meta.total ? (page - 1) * 5 + 1 : 0;
   const lastItem = Math.min(page * 5, meta.total);
-  const clock = (value?: string) =>
+  const dateTime = (value?: string) =>
     value
       ? new Intl.DateTimeFormat("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hourCycle: "h23",
+          dateStyle: "medium",
+          timeStyle: "short",
           timeZone: "Asia/Jakarta",
         }).format(new Date(value)) + " WIB"
       : "—";
@@ -119,8 +118,8 @@ export function AttendanceTodaySection({
           },
           {
             key: "check-in-time",
-            header: "Waktu check-in",
-            cell: (row) => clock(row.attendance?.submittedAt),
+            header: "Tanggal & waktu check-in",
+            cell: (row) => dateTime(row.attendance?.submittedAt),
           },
         ]}
       />

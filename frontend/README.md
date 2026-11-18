@@ -68,6 +68,8 @@ The checked-in vercel.json sets the frontend root output directory to dist and r
 3. Deploy/redeploy the frontend after changing API_URL.
 4. Configure the backend CORS_ORIGIN to allow the deployed frontend origin.
 
+Login sends the email and password as a JSON request over HTTPS. TLS encrypts the complete request while it travels over the network; the password is not intended to be client-encrypted into a custom field. The browser and backend must process the original password to authenticate, and the backend stores a bcrypt hash rather than the password. The production build rejects non-HTTPS API URLs (except local development).
+
 The backend must be publicly reachable over HTTPS, its readiness route should be healthy, and Supabase/object-storage secrets belong only in the backend environment. Never place database or storage credentials in Vercel frontend variables.
 
 ## Browser E2E

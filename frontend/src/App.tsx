@@ -170,6 +170,7 @@ function App() {
   const [page, setPage] = useState(1);
   const [attendanceLimit, setAttendanceLimit] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [date, setDate] = useState("");
   const [department, setDepartment] = useState<DepartmentCode | "">("");
   const [employeeStatus, setEmployeeStatus] = useState<
@@ -221,6 +222,7 @@ function App() {
         setPage(1);
         setMissingPage(1);
         setSearch("");
+        setDebouncedSearch("");
         if (
           (next === "attendance" || next === "attendance-today") &&
           role === "HRD"
@@ -249,6 +251,10 @@ function App() {
       window.history.replaceState({}, "", "/");
     }
   }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
   const reload = useCallback(async () => {
     if (!user) return;
     const current = ++generation.current;
@@ -292,7 +298,7 @@ function App() {
           page: String(page),
           limit: String(attendanceLimit),
         });
-        if (search) q.set("search", search);
+        if (debouncedSearch) q.set("search", debouncedSearch);
         if (department) q.set("department", department);
         if (employeeStatus) q.set("employeeStatus", employeeStatus);
         const result = await api<Page<Employee>>(`/employees?${q}`, token);
@@ -321,7 +327,7 @@ function App() {
             view === "attendance" && user.role === "HRD" ? attendanceLimit : 20,
           ),
         });
-        if (search && view === "attendance") q.set("search", search);
+        if (debouncedSearch && view === "attendance") q.set("search", debouncedSearch);
         if (date && view === "attendance") q.set("date", date);
         if (view === "attendance" && user.role === "HRD") q.set("source", "DIRECT");
         if (department && view === "attendance")
@@ -337,7 +343,7 @@ function App() {
             limit: "5",
             date: date || jakartaDate(),
           });
-          if (search) missingQuery.set("search", search);
+          if (debouncedSearch) missingQuery.set("search", debouncedSearch);
           if (department) missingQuery.set("department", department);
           missingRequest = api<Page<Employee>>(
             `/attendances/hr/missing-attendance?${missingQuery}`,
@@ -393,7 +399,7 @@ function App() {
     page,
     missingPage,
     attendanceLimit,
-    search,
+    debouncedSearch,
     date,
     department,
     employeeStatus,
