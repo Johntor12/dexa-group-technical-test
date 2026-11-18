@@ -143,7 +143,8 @@ export function RecordsSection({
             <label className="page-size-select">Tampilkan<select aria-label="Jumlah data check-in per halaman" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}><option value={10}>10 data</option><option value={25}>25 data</option></select></label>
           </div>
           <DataTable<Attendance> caption="Karyawan yang sudah check-in" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada karyawan yang check-in pada tanggal ini." columns={[
-       { key: 'employee', header: 'Karyawan', cell: a => <><strong>{a.employeeName}</strong><span className="cell-secondary">{a.employeeNumber}</span></> },
+       { key: 'employee-name', header: 'Nama Karyawan', cell: a => <strong>{a.employeeName}</strong> },
+       { key: 'employee-number', header: 'ID Karyawan', cell: a => a.employeeNumber },
        { key: 'department', header: 'Departemen', cell: a => departmentLabel(a.department) },
        { key: 'checkin', header: 'Check-in', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? '—' : clock(a.submittedAt) },
        { key: 'checkout', header: 'Check-out', cell: a => clock(a.checkOutAt) },
@@ -158,14 +159,15 @@ export function RecordsSection({
         </section>
         <section className="rounded-xl border border-slate-200 bg-white p-[1.5vw] max-sm:p-[4vw]">
           <div className="mb-[1.2vw]"><h3 className="text-[clamp(1.25rem,1.55vw,1.7rem)] font-bold text-slate-900">Belum Check-in · {date || 'hari ini'}</h3><p className="mt-1 text-sm text-slate-600">Karyawan aktif yang belum memiliki catatan WFH pada tanggal yang dipilih.</p></div>
-          <DataTable<Employee> caption="Karyawan yang belum check-in" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Semua karyawan sudah memiliki catatan pada tanggal ini." columns={[{key:'employee',header:'Karyawan',cell:e => <><strong>{e.fullName}</strong><span className="cell-secondary">{e.employeeNumber}</span></>},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Belum check-in</span> }]} />
+          <DataTable<Employee> caption="Karyawan yang belum check-in" loading={loading} rows={missingEmployees?.data ?? []} emptyTitle="Semua karyawan sudah memiliki catatan pada tanggal ini." columns={[{key:'employee-name',header:'Nama Karyawan',cell:e => <strong>{e.fullName}</strong>},{key:'employee-number',header:'ID Karyawan',cell:e => e.employeeNumber},{key:'department',header:'Departemen',cell:e => departmentLabel(e.department)},{key:'status',header:'Status',cell:() => <span>Belum check-in</span> }]} />
           <footer className="pagination mt-[1vw]">
             <div className="pagination-summary"><span>{missingEmployees?.meta.total ?? 0} karyawan · Halaman {missingPage} dari {Math.max(1, missingEmployees?.meta.totalPages ?? 1)}</span></div>
             <PaginationControls page={missingPage} totalPages={missingEmployees?.meta.totalPages ?? 1} onPageChange={onMissingPageChange} loading={loading} className="flex gap-[0.5vw]" />
           </footer>
         </section>
       </section> : <DataTable<Attendance> caption="Riwayat kehadiran" loading={loading} rows={attendances?.data ?? []} emptyTitle="Belum ada absensi sesuai filter." columns={[
-       { key: 'employee', header: 'Karyawan', cell: a => <><strong>{a.employeeName}</strong><span className="cell-secondary">{a.employeeNumber}</span></> },
+       { key: 'employee-name', header: 'Nama Karyawan', cell: a => <strong>{a.employeeName}</strong> },
+       { key: 'employee-number', header: 'ID Karyawan', cell: a => a.employeeNumber },
        { key: 'department', header: 'Departemen', cell: a => departmentLabel(a.department) },
        { key: 'checkin', header: 'Check-in', cell: a => a.source === 'MISSED_CHECK_IN_CLAIM' ? '—' : clock(a.submittedAt) },
        { key: 'checkout', header: 'Check-out', cell: a => clock(a.checkOutAt) },
